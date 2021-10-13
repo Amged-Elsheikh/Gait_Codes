@@ -1,7 +1,3 @@
-#     <li> In this project, 12 EMG sensors were used. 9 features were extracted from each sensor leading to a 108 features set and there are 8 outputs</li>
-#     <li> Features and outputs were divided into left side and right side.</li>
-#     <li> Number of input EMG Featurs is 54 features and each side will have 4 target values (2 angles and 2 torques)</li>
-#     <li> In some models I will add the angles as an input, and try to predict the moment only</li>
 from Custom.WindowGenerator import WindowGenerator
 import matplotlib as mpl
 from functools import partial
