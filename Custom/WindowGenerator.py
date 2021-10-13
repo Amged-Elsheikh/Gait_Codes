@@ -81,8 +81,8 @@ class WindowGenerator:
             f"output timestep: {self.label_width}"])
 
     def split_window(self, features):
-        inputs = features[:, self.input_slice, :-self.out_nums]
-        labels = features[:, self.labels_slice, -self.out_nums:]
+        inputs = features[:, self.input_slice, 54:-3]
+        labels = features[:, self.labels_slice, -2:]
 
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
@@ -92,9 +92,9 @@ class WindowGenerator:
 
     def IO_window(self, data):
         return keras.preprocessing.timeseries_dataset_from_array(data=data, targets=None,
-                                                                 sequence_length=self.total_window_size,
-                                                                 sequence_stride=1, shuffle=False,
-                                                                 batch_size=self.batch_size)
+                                                                sequence_length=self.total_window_size,
+                                                                sequence_stride=1, shuffle=False,
+                                                                batch_size=self.batch_size)
 
     def prepare_sides(self, data):
         """
