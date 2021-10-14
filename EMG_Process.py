@@ -52,6 +52,8 @@ def load_emg_data(emg_file):
     emg.columns = emg.columns.str.replace("Trigno IM ", "", regex=True)
     emg.columns = emg.columns.str.replace("X [s]", "time", regex=False)
     emg.set_index("time", inplace=True)
+    ## work with EMG signals from the Shank only
+    emg = emg[[f"sensor {i}" for i in range(7,13)]]
     return emg
 
 def apply_filter(emg, order=4, lowband=20, highband=450):
@@ -96,8 +98,8 @@ def process_emg_signal(emg, norm_file):
     return DEMG
 
 def plot_all_emg(emg, file_name=None):
-    m = 2
-    n = int(len(emg.columns)/2)
+    m = 2 # number of columns
+    n = int(len(emg.columns)/2) # number of raws
     for i in range(n):
         plt.subplot(n,m,i+1)
         plt.plot(emg.index, emg.iloc[:,2*i], emg.index, emg.iloc[:,2*i+1])
@@ -143,25 +145,19 @@ def get_features(DEMG):
         start = 0
         end = 0.1
         coeff = []
-#         RMS = []
         MAV = []
         ZC = []
-        WL = []
-        EMG_label = f"sensor {EMG_num+1}"
+        EMG_label = f"sensor {EMG_num+7}"
         sensor_data = DEMG[EMG_label]
 
         while (end<time_limit):
             window_data = sensor_data[(DEMG.index>=start) & (DEMG.index < end)].to_numpy()
-#             # Get the RMS
-#             RMS.append(get_RMS(window_data))
+            #Get the AR coefficients
+            coeff.append(get_AR_coeffs(window_data))
             # Get the MAV
             MAV.append(get_MAV(window_data))
             # Get Zero-Crossing
             ZC.append(zero_crossing(window_data))
-            # Get Wave length
-            WL.append(wave_length(window_data))
-            #Get the AR coefficients
-            coeff.append(get_AR_coeffs(window_data))
             # Update window
             start = start + step
             end = end + step
@@ -169,13 +165,11 @@ def get_features(DEMG):
         coeff = np.array(coeff)
 #         RMS = np.array(RMS)
         ZC = np.array(ZC)
-        WL = np.array(WL)
         MAV = np.array(MAV)
         dataset_temp =  pd.DataFrame({f'DEMG{EMG_num+1}_AR1':coeff[:,1], f'DEMG{EMG_num+1}_AR2':coeff[:,2], 
                                       f'DEMG{EMG_num+1}_AR3':coeff[:,3],f'DEMG{EMG_num+1}_AR4':coeff[:,4], 
                                       f'DEMG{EMG_num+1}_AR5':coeff[:,5], f'DEMG{EMG_num+1}_AR6':coeff[:,6],
-                                      f'DEMG{EMG_num+1}_ZC': ZC, f'DEMG{EMG_num+1}_WL': WL,
-                                      f'DEMG{EMG_num+1}_MAV': MAV})
+                                      f'DEMG{EMG_num+1}_ZC': ZC, f'DEMG{EMG_num+1}_MAV': MAV})
         dataset = pd.concat([dataset, dataset_temp], axis = 1)
 #         print(f"{EMG_label} done")
 
@@ -185,7 +179,7 @@ def get_features(DEMG):
     return dataset
     
 def plot_MAV(dataset, emg_file):
-    MAV_columns = [f'DEMG{i+1}_MAV' for i in range(12)]
+    MAV_columns = [f'DEMG{i+1}_MAV' for i in range(6)]
     MAV_data = dataset[MAV_columns]
     plot_all_emg(MAV_data, emg_file)
     
@@ -198,16 +192,10 @@ def emg_to_features():
         emg = load_emg_data(emg_file)
         DEMG = process_emg_signal(emg, norm_file)
     #     plot_all_emg(DEMG, emg_file)
-    #     filtered_emg.describe()
         dataset = get_features(DEMG)
         plot_MAV(dataset, emg_file)
         plt.show();
         dataset.to_csv(output_file)
 
-
-# In[49]:
-
-
 # %%time
 emg_to_features()
-
