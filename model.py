@@ -31,14 +31,6 @@ trials = list(map(lambda x: f"{dataset_folder}{x}_dataset.csv", trials))
 # Scaling functions
 
 
-def scale_features(data, mean, std):
-    """
-    standard deviation the input (mean=0, std=1)
-    """
-    data.iloc[:, :-8] = (data.iloc[:, :-8]-mean)/std
-    return data
-
-
 def scale_moment(data, weight, scale=False):
     if scale:
         data.iloc[:, -4:] = data.iloc[:, -4:]/weight
@@ -46,35 +38,14 @@ def scale_moment(data, weight, scale=False):
         pass
     return data
 
-
-def scale_dataset(train_01_df, train_02_df, val_df, test_df, weight, MinMax=True):
-    if not MinMax:
-        train_mean = train_01_df.iloc[:, :-8].mean()
-        train_std = train_01_df.iloc[:, :-8].std()
-        for data in [train_01_df, train_02_df, val_df, test_df]:
-            data = scale_features(data, train_mean, train_std)
-            data = scale_moment(data, weight)
-    else:
-        scaler = MinMaxScaler((0, 1))
-        scaler.fit(train_01_df.iloc[:, :-8])
-        for data in [train_01_df, train_02_df, val_df, test_df]:
-            data.iloc[:, :-8] = scaler.transform(data.iloc[:, :-8])
-            data = scale_moment(data, weight)
-    return train_01_df, train_02_df, val_df, test_df
-
-
 # Import and scale the data
-train_01_df = pd.read_csv(trials[0], index_col='time')
-train_02_df = pd.read_csv(trials[1], index_col='time')
-val_df = pd.read_csv(trials[2], index_col='time')
-test_df = pd.read_csv(trials[3], index_col='time')
-
-# Scaling the data
-train_01_df, train_02_df, val_df, test_df = scale_dataset(
-    train_01_df, train_02_df, val_df, test_df, w, MinMax=False)
-# train_01_df.describe().transpose()
+train_01_df = scale_moment(pd.read_csv(trials[0], index_col='time'))
+train_02_df = scale_moment(pd.read_csv(trials[1], index_col='time'))
+val_df = scale_moment(pd.read_csv(trials[2], index_col='time'))
+test_df = scale_moment(pd.read_csv(trials[3], index_col='time'))
 
 
+# window-object is a custom object
 def make_dataset(window_object):
     train_set = window_object.get_train_dataset()
     val_set = window_object.get_val_dataset()
@@ -152,12 +123,6 @@ def plot_results(y_true, y_pred, R2_score, rmse_result):
         elif i+1 == 3:
             plt.ylabel("Moment [Nm]")
     # plt.savefig(f"{folder}{labels[col]}.png")
-    plt.subplots_adjust(left=0.1,
-                        bottom=0.1,
-                        right=0.9,
-                        top=0.9,
-                        wspace=0.4,
-                        hspace=0.4)
     plt.show()
     plt.close()
 
