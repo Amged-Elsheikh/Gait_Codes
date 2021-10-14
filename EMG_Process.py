@@ -44,10 +44,12 @@ def get_emg_files():
     norm_file = f"S{subject}_EMG_norm.csv"
     # Get inputs names
     inputs_names = ["test", "train_01", "train_02", "val"]
-    inputs_names = list(map(lambda x: f"S{subject}_{x}_EMG.csv", inputs_names)) # add path, subject number and file extension
+    # add path, subject number and file extension
+    inputs_names = list(map(lambda x: f"S{subject}_{x}_EMG.csv", inputs_names))
     # Get outputs names
     output_files = list(map(lambda x: f"{outputs_path}{x}", inputs_names))
-    output_files = list(map(lambda x: x.replace("_EMG", "_features"), output_files))
+    output_files = list(
+        map(lambda x: x.replace("_EMG", "_features"), output_files))
     return norm_file, inputs_names, output_files
 
 
@@ -70,52 +72,25 @@ def apply_filter(emg, order=4, lowband=20, highband=450):
     return filtfilt(b, a, emg)
 
 
-def normalize_emg(filtered_emg, norm_file):
-    """
-    Make sure data is filtered with zero mean before normalization
-    """
-    # Load the data that will be used for normalizing
-    emg_normalizer = load_emg_data(norm_file)
-    # Filter the data
-    emg_normalizer = emg_normalizer.apply(apply_filter)
-    # Remove the mean
-    filtered_emg = filtered_emg - filtered_emg.mean()
-    # Create a pandas dataset that will received the normalized data
-    normalized_emg = pd.DataFrame(
-        index=filtered_emg.index, columns=filtered_emg.columns)
-    for col in filtered_emg.columns:
-        # Create standard scaler object
-        scaler = MinMaxScaler(feature_range=(-1, 1))
-        # fit the scaler to the normailer data
-        scaler.fit(np.reshape(emg_normalizer[col].values, (-1, 1)))
-        # Get one sensor values at the time
-        filtered_emg_col = filtered_emg[col].values
-        # Normalize the column and updated normalized emg dataframe values
-        normalized_emg[col] = scaler.transform(
-            np.reshape(filtered_emg_col, (-1, 1)))
-    return normalized_emg
-
-
-def process_emg_signal(emg, norm_file):
+def process_emg_signal(emg):
     # filter the signals
     filtered_emg = emg.apply(apply_filter)
     # Remove The mean
     filtered_emg = filtered_emg-filtered_emg.mean()
-    # Normalize signals
-    norm_emg = normalize_emg(filtered_emg, norm_file)
     # differentiate the signal
-    DEMG = norm_emg.apply(np.gradient)/0.0009
+    DEMG = filtered_emg.apply(np.gradient)/0.0009
     return DEMG
 
 
 def plot_all_emg(emg, file_name=None):
     m = 2  # number of columns
     n = int(len(emg.columns)/2)  # number of raws
+    plt.figure(file_name)
     for i in range(n):
         plt.subplot(n, m, i+1)
         plt.plot(emg.index, emg.iloc[:, 2*i], emg.index, emg.iloc[:, 2*i+1])
     plt.suptitle(file_name)
-    plt.show()
+    plt.draw()
 
 
 # ### Features Functions
@@ -185,6 +160,24 @@ def get_features(DEMG):
     return dataset
 
 
+def features_scaler(dataset, scaler, features_range=(0, 1)):
+    """
+    Scale dataset using MinMax values.
+
+    dataset: pandas dataframe contains features
+    scaler: a tuple (minimum, maximum) from emg_normalizer
+    features_range: a tuple contains the the desired output range of features
+    """
+    minimum = np.min(scaler)
+    maximum = np.max(scaler)
+    lowest = np.min(features_range)
+    highest = np.max(features_range)
+    # Scale Equation
+    scaled_dataset = ((dataset-minimum)/(maximum-minimum)) * \
+        (highest-lowest) + lowest
+    return scaled_dataset
+
+
 def plot_MAV(dataset, emg_file):
     MAV_columns = [f'DEMG{i+1}_MAV' for i in range(6)]
     MAV_data = dataset[MAV_columns]
@@ -195,15 +188,32 @@ def plot_MAV(dataset, emg_file):
 
 def emg_to_features():
     norm_file, inputs_names, output_files = get_emg_files()
+
+    # First prepare features normalizer
+    print("start working with norm file")
+    norm_emg = load_emg_data(norm_file)
+    norm_DEMG = process_emg_signal(norm_emg)
+    normalizer = get_features(norm_DEMG)
+    # Uncomment for new subject to detect moving artifacts
+    # plot_MAV(normalizer, "normalizer")
+    # plt.show()
+    scaler = (normalizer.min(), normalizer.max())
+    print("End of working with norm file \n to experement data")
+
     for emg_file, output_file in zip(inputs_names, output_files):
-        emg = load_emg_data(emg_file)
-        DEMG = process_emg_signal(emg, norm_file)
-    #     plot_all_emg(DEMG, emg_file)
-        dataset = get_features(DEMG)
-        plot_MAV(dataset, emg_file)
-        plt.show()
-        dataset.to_csv(output_file)
+        # Preprocessing
+        emg = load_emg_data(emg_file)  # Load data
+        DEMG = process_emg_signal(emg)  # preprocess the data
+        dataset = get_features(DEMG)  # get features
+        # Scale dataset
+        scaled_dataset = features_scaler(dataset, scaler, features_range)
+        # Plot data
+        plot_MAV(scaled_dataset, emg_file)
+        # save dataset
+        scaled_dataset.to_csv(output_file)
 
 
 # %%time
+features_range = (0, 1)
 emg_to_features()
+plt.show()
