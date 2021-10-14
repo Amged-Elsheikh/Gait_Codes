@@ -163,7 +163,6 @@ def get_features(DEMG):
             end = end + step
 
         coeff = np.array(coeff)
-#         RMS = np.array(RMS)
         ZC = np.array(ZC)
         MAV = np.array(MAV)
         dataset_temp =  pd.DataFrame({f'DEMG{EMG_num+1}_AR1':coeff[:,1], f'DEMG{EMG_num+1}_AR2':coeff[:,2], 
