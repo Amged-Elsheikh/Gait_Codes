@@ -81,8 +81,8 @@ class WindowGenerator:
             f"output timestep: {self.label_width}"])
 
     def split_window(self, features):
-        inputs = features[:, self.input_slice, 54:-3]
-        labels = features[:, self.labels_slice, -2:]
+        inputs = features[:, self.input_slice, :-3] # Take all EMG features and knee angle column
+        labels = features[:, self.labels_slice, -2:] # Predict ankle angle & torque
 
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
