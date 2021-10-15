@@ -20,7 +20,7 @@ class WindowGenerator:
         self.features_num = len(test_df.columns)//2 - out_nums  # used for input layer
         ####### Seperate left left and right side columns #######
 
-        features_per_sensor = 9
+        features_per_sensor = 8
         inputs_col = train_01_df.columns[:-8].values
         labels = train_01_df.columns[-8:].values
         sensors_num = len(inputs_col)//features_per_sensor
