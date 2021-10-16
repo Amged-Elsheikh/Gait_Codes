@@ -1,5 +1,5 @@
 from Custom.WindowGenerator import WindowGenerator
-import matplotlib as mpl
+# import matplotlib as mpl
 from functools import partial
 from sklearn import metrics
 import matplotlib.pyplot as plt
@@ -12,7 +12,7 @@ import tensorflow as tf
 from tensorflow import keras
 K = keras.backend
 
-mpl.rcParams['figure.dpi'] = 110
+# mpl.rcParams['figure.dpi'] = 110
 Weight = {"S02": 60.5, "S03":67.8}
 model_dic = {}
 
@@ -30,9 +30,16 @@ trials = list(map(lambda x: f"{dataset_folder}S{subject}_{x}_dataset.csv", trial
 # Scaling functions
 
 
-def scale_moment(data, weight=w, scale=False):
+def scale_moment(data, weight=w, scale=False, scale_angle=False, scale_features=False):
     if scale:
         data.iloc[:, -4:] = data.iloc[:, -4:]/weight
+    if scale_angle:
+        # minimum and maximum possible knee angles according to opensim model
+        minimum = -120
+        maximum = 10
+        data.loc[:,["knee_angle_r", "knee_angle_l"]] = (data.loc[:,["knee_angle_r", "knee_angle_l"]]-minimum)/(maximum-minimum)
+    if scale_features:
+        data.iloc[:,:-8] = data.iloc[:,:-8].apply(lambda x: x*10)
     return data
 
 # Import and scale the data
@@ -135,8 +142,8 @@ def create_lstm_model(window_object):
     # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
     custom_LSTM = partial(layers.LSTM, dropout=0.3)
     lstm_model = keras.models.Sequential([
-        layers.InputLayer((window_object.input_width,
-                          window_object.features_num)),
+        layers.InputLayer((window_object.input_width, window_object.features_num)),
+        # custom_LSTM(4, return_sequences=True),
         custom_LSTM(16, return_sequences=True),
         custom_LSTM(16, return_sequences=False),
         layers.Dense(2 * window_object.label_width, #window_object.out_nums=2
@@ -165,7 +172,6 @@ model_dic["conv_model"] = create_conv_model
 
 def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False):
     # setup model folder
-    plt.draw()
     global folder
     folder = f"../Results/indiviuals/{model_name}/S{subject}/"
     if not os.path.exists(folder):
@@ -178,7 +184,7 @@ def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, lo
     K.clear_session()
     model = model_dic[model_name](window_object)
     model.compile(optimizer=keras.optimizers.Nadam(learning_rate=lr),
-                    loss=custom_loss)
+                    loss="mean_squared_error")
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
                                 filepath=f"{folder}S{subject}_{model_name}.hdf5",
                                 save_weights_only=True, monitor='val_loss',
