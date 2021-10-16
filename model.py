@@ -13,7 +13,7 @@ from tensorflow import keras
 K = keras.backend
 
 mpl.rcParams['figure.dpi'] = 110
-Weight = {"S02": 60.5}
+Weight = {"S02": 60.5, "S03":67.8}
 model_dic = {}
 
 if not tf.test.is_built_with_cuda():
@@ -24,18 +24,15 @@ if not tf.test.is_built_with_cuda():
 subject = "02"
 w = Weight[f'S{subject}']
 dataset_folder = f"../Dataset/S{subject}/"
-trials = [f"S{subject}_train_01", f"S{subject}_train_02",
-          f"S{subject}_val", f"S{subject}_test"]
-trials = list(map(lambda x: f"{dataset_folder}{x}_dataset.csv", trials))
+trials = ["train_01", "train_02", "val", "test"]
+trials = list(map(lambda x: f"{dataset_folder}S{subject}_{x}_dataset.csv", trials))
 
 # Scaling functions
 
 
-def scale_moment(data, weight, scale=False):
+def scale_moment(data, weight=w, scale=False):
     if scale:
         data.iloc[:, -4:] = data.iloc[:, -4:]/weight
-    else:
-        pass
     return data
 
 # Import and scale the data
@@ -95,36 +92,41 @@ def plot_learning_curve(history):
         print("No train history was found")
         return None
     else:
+        plt.figure("Learning curve")
         plt.plot(history.epoch, history.history['loss'],
                  history.epoch, history.history['val_loss'])
-        plt.show()
+        plt.legend(["train loss", "val loss"])
+        plt.xlabel("Epochs")
+        plt.ylabel("loss")
+        plt.draw()
         plt.savefig(f"{folder}learning_curve.png")
-        plt.close()
+        # plt.close()
         return None
 
 
 def plot_results(y_true, y_pred, R2_score, rmse_result):
     global time
     time = [i/20 for i in range(len(y_true))]
-    labels = ["Knee moment", "Ankle moment"]
+    plt.figure("Prediction")
+    labels = ["Ankle angle", "Ankle moment"]
     for i, col in enumerate(labels):
         plt.subplot(2, 1, i+1)
         print(f"{col} R2 score: {R2_score[i]}")
         print(f"{col} RMSE result: {rmse_result[i]}")
         plt.plot(time, y_true[:, i],
-                 time, y_pred[:, i])
+                 time, y_pred[:, i],"r--")
         plt.title(col)
-        # plt.legend(["y_true", "y_pred"])
+        plt.legend(["y_true", "y_pred"])
         plt.xlim((time[-600], time[-100]))
         if "moment" in col:
             plt.xlabel("Time [s]")
         if i+1 == 1:
             plt.ylabel("Angle [Degree]")
-        elif i+1 == 3:
+        elif i+1 == 2:
             plt.ylabel("Moment [Nm]")
     # plt.savefig(f"{folder}{labels[col]}.png")
-    plt.show()
-    plt.close()
+    plt.draw()
+    # plt.close()
 
 # Models
 
@@ -136,8 +138,10 @@ def create_lstm_model(window_object):
         layers.InputLayer((window_object.input_width,
                           window_object.features_num)),
         custom_LSTM(16, return_sequences=True),
-        custom_LSTM(16, return_sequences=True),
-        layers.Dense(window_object.out_nums)
+        custom_LSTM(16, return_sequences=False),
+        layers.Dense(2 * window_object.label_width, #window_object.out_nums=2
+                        kernel_initializer=tf.initializers.zeros()),
+        layers.Reshape([window_object.label_width, 2]) #window_object.out_nums
     ])
     return lstm_model
 
@@ -173,12 +177,13 @@ def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, lo
     # Load and compile new model
     K.clear_session()
     model = model_dic[model_name](window_object)
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=lr),
-                  loss=custom_loss)
+    model.compile(optimizer=keras.optimizers.Nadam(learning_rate=lr),
+                    loss=custom_loss)
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=f"{folder}S{subject}_{model_name}.hdf5",
-        save_weights_only=True, monitor='val_loss',
-        save_best_only=True)
+                                filepath=f"{folder}S{subject}_{model_name}.hdf5",
+                                save_weights_only=True, monitor='val_loss',
+                                save_best_only=True)
+
     if load_best:
         try:
             model.load_weights(f"{folder}/S{subject}_{model_name}.hdf5")
@@ -186,7 +191,7 @@ def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, lo
             print("No saved model existing. weights will be initialized")
     ##############################################################################################################
     # Train Model
-    try:
+    try: # Train or load the best model the model
         if not eval_only:
             history = model.fit(x=train_set, validation_data=val_set,
                                 epochs=epochs, callbacks=[model_checkpoint_callback])
@@ -215,14 +220,16 @@ def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, lo
     r2_score = nan_R2(y_true, y_pred)
     rmse_result = nan_rmse(y_true, y_pred)
     plot_results(y_true, y_pred, r2_score, rmse_result)
-
+    plt.show()
     return history, y_true, y_pred, r2_score, rmse_result
 
 
 # %%
 model_name = "lstm_model"
-
+# Create Window object
 w1 = WindowGenerator(train_01_df=train_01_df, train_02_df=train_02_df,
-                     val_df=val_df, test_df=test_df, input_width=20, out_nums=2)
-history, y_true, y_pred, r2, rmse = train_fit(
-    w1, model_name, epochs=1000, eval_only=False, load_best=False)
+                     val_df=val_df, test_df=test_df, 
+                     input_width=20, shift=4, label_width=1, out_nums=3)
+# Train and test new/existing models
+history, y_true, y_pred, r2, rmse = train_fit(w1, model_name, epochs=2000,
+                                                eval_only=False, load_best=False)
