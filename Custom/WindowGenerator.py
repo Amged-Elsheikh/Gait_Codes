@@ -122,7 +122,7 @@ class WindowGenerator:
         # Split window data to input and output and store results
         train_ds = train_ds.map(self.split_window)
         # Shufffle the train dataset
-        train_ds = self.preprocessing(train_ds, shuffle=True)
+        train_ds = self.preprocessing(train_ds, shuffle=True, drop_reminder=True)
         return train_ds
 
     def get_val_dataset(self):
@@ -131,7 +131,7 @@ class WindowGenerator:
         # Split window data to input and output and store results
         val_ds = val_ds.map(self.split_window)
         # Make the batch size as big as possible
-        val_ds = self.preprocessing(val_ds, shuffle=False, batch_size=16000)
+        val_ds = self.preprocessing(val_ds, batch_size=16000, shuffle=False, remove_nan=True)
         return val_ds
 
     def get_evaluation_set(self):
@@ -140,10 +140,10 @@ class WindowGenerator:
         # Split window data to input and output and store results
         test_ds = test_ds.map(self.split_window)
         # Make the batch size as big as possible
-        test_ds = self.preprocessing(test_ds, shuffle=False, batch_size=16000, remove_nan=False)
+        test_ds = self.preprocessing(test_ds, batch_size=16000, shuffle=False, remove_nan=False)
         return test_ds
 
-    def preprocessing(self, ds, batch_size=None, shuffle=False, remove_nan=True):
+    def preprocessing(self, ds, batch_size=None, shuffle=False, remove_nan=True, drop_reminder=False):
         ds = ds.unbatch()
         if remove_nan:
             filter_nan = lambda _, y: not tf.reduce_any(tf.math.is_nan(y))
@@ -154,6 +154,6 @@ class WindowGenerator:
             ds = ds.shuffle(buffer_size=16000, reshuffle_each_iteration=True)
         if not batch_size:
             batch_size = self.batch_size
-        ds = ds.batch(batch_size, drop_remainder=True)
+        ds = ds.batch(batch_size, drop_remainder=drop_reminder)
         ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
         return ds
