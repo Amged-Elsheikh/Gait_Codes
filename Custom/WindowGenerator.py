@@ -7,7 +7,7 @@ from tensorflow import keras
 class WindowGenerator:
     def __init__(self, train_01_df, train_02_df, val_df, test_df,
                  input_width=50, label_width=None, shift=1,
-                 batch_size=128, out_nums=4):
+                 batch_size=128, out_nums=3):
 
         self.batch_size = batch_size
         self.out_nums = out_nums
@@ -81,7 +81,7 @@ class WindowGenerator:
             f"output timestep: {self.label_width}"])
 
     def split_window(self, features):
-        inputs = features[:, self.input_slice, :-3] # Take all EMG features and knee angle column
+        inputs = features[:, self.input_slice, :-self.out_nums] # Take all EMG features and knee angle column
         labels = features[:, self.labels_slice, -2:] # Predict ankle angle & torque
 
         # Slicing doesn't preserve static shape information, so set the shapes
@@ -113,8 +113,6 @@ class WindowGenerator:
         return left.concatenate(right)
 
     def get_train_dataset(self):
-        """
-        """
         # Prepare each trail sides
         trail_01 = self.prepare_sides(self.train_01_df)
         trail_02 = self.prepare_sides(self.train_02_df)
@@ -148,14 +146,14 @@ class WindowGenerator:
     def preprocessing(self, ds, batch_size=None, shuffle=False, remove_nan=True):
         ds = ds.unbatch()
         if remove_nan:
-            # filter_nan = lambda x, y: not tf.reduce_any(tf.math.is_nan(x)) and not tf.math.is_nan(y)
-            # ds = ds.filter(filter_nan)
+            filter_nan = lambda _, y: not tf.reduce_any(tf.math.is_nan(y))
+            ds = ds.filter(filter_nan)
             pass
         ds = ds.cache()
         if shuffle:
             ds = ds.shuffle(buffer_size=16000, reshuffle_each_iteration=True)
         if not batch_size:
             batch_size = self.batch_size
-        ds = ds.batch(batch_size)
+        ds = ds.batch(batch_size, drop_remainder=True)
         ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
         return ds
