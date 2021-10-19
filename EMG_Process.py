@@ -127,16 +127,16 @@ def wave_length(data):
 
 
 def get_features(DEMG):
-    step = 0.05
+    step = 0.125
     dataset = pd.DataFrame()
     time_limit = max(DEMG.index)
     print(f"time_limit: {time_limit}s")
     for EMG_num in range(len(DEMG.columns)):
         start = 0
-        end = 0.1
+        end = 0.250
         coeff = []
         MAV = []
-        RMS = []
+        # RMS = []
         ZC = []
         EMG_label = f"sensor {EMG_num+7}"
         sensor_data = DEMG[EMG_label]
@@ -149,7 +149,7 @@ def get_features(DEMG):
             # Get the MAV
             MAV.append(get_MAV(window_data))
             # Get RMS
-            RMS.append(get_RMS(window_data))
+            # RMS.append(get_RMS(window_data))
             # Get Zero-Crossing
             ZC.append(zero_crossing(window_data))
             # Update window
@@ -162,8 +162,7 @@ def get_features(DEMG):
         dataset_temp = pd.DataFrame({f'DEMG{EMG_num+1}_AR1': coeff[:, 1], f'DEMG{EMG_num+1}_AR2': coeff[:, 2],
                                      f'DEMG{EMG_num+1}_AR3': coeff[:, 3], f'DEMG{EMG_num+1}_AR4': coeff[:, 4],
                                      f'DEMG{EMG_num+1}_AR5': coeff[:, 5], f'DEMG{EMG_num+1}_AR6': coeff[:, 6],
-                                     f'DEMG{EMG_num+1}_ZC': ZC, f'DEMG{EMG_num+1}_MAV': MAV,
-                                     f'DEMG{EMG_num+1}_RMS': RMS})
+                                     f'DEMG{EMG_num+1}_ZC': ZC, f'DEMG{EMG_num+1}_MAV': MAV})
         dataset = pd.concat([dataset, dataset_temp], axis=1)
 #         print(f"{EMG_label} done")
 
