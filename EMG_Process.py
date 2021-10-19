@@ -15,7 +15,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.signal import butter, filtfilt
+from scipy import signal
 import os
 from statsmodels.tsa.ar_model import AutoReg
 # from sklearn.preprocessing import StandardScaler as std
@@ -63,18 +63,25 @@ def load_emg_data(emg_file):
     emg = emg[[f"sensor {i}" for i in range(7, 13)]]
     return emg
 
+def apply_notch_filter(data):
+    fs = 1/0.0009  # Hz
+    f0 = 50 # Notched frequancy
+    Q = 30 # Quality factor
+    b, a = signal.iirnotch(f0, Q, fs)
+    return signal.filtfilt(b, a, data)
 
 def apply_filter(emg, order=4, lowband=20, highband=450):
     fs = 1/0.0009  # Hz
     low_pass = lowband/(fs*0.5)
     hig_pass = highband/(fs*0.5)
-    b, a = butter(N=order, Wn=[low_pass, hig_pass], btype="bandpass")
-    return filtfilt(b, a, emg)
+    b, a = signal.butter(N=order, Wn=[low_pass, hig_pass], btype="bandpass")
+    return signal.filtfilt(b, a, emg)
 
 
 def process_emg_signal(emg):
     # filter the signals
     filtered_emg = emg.apply(apply_filter)
+    filtered_emg = filtered_emg.apply(apply_notch_filter)
     # Remove The mean
     filtered_emg = filtered_emg-filtered_emg.mean()
     # differentiate the signal
