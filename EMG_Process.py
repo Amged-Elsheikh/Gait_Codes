@@ -127,7 +127,7 @@ def wave_length(data):
 
 
 def get_features(DEMG):
-    step = 0.125
+    step = 0.100
     dataset = pd.DataFrame()
     time_limit = max(DEMG.index)
     print(f"time_limit: {time_limit}s")
@@ -166,7 +166,7 @@ def get_features(DEMG):
         dataset = pd.concat([dataset, dataset_temp], axis=1)
 #         print(f"{EMG_label} done")
 
-    dataset['time'] = [np.around(step*i, 2) for i in range(len(dataset))]
+    dataset['time'] = [np.around(step*i, 3) for i in range(len(dataset))]
     dataset.set_index("time", inplace=True)
     dataset.describe()
     return dataset
