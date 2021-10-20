@@ -106,7 +106,7 @@ def plot_learning_curve(history):
         plt.xlabel("Epochs")
         plt.ylabel("loss")
         plt.draw()
-        plt.savefig(f"{folder}learning_curve.png")
+        plt.savefig(f"{folder}learning_curve.pdf")
         # plt.close()
         return None
 
@@ -131,7 +131,7 @@ def plot_results(y_true, y_pred, R2_score, rmse_result):
             plt.ylabel("Angle [Degree]")
         elif i+1 == 2:
             plt.ylabel("Moment [Nm]")
-    # plt.savefig(f"{folder}{labels[col]}.png")
+    plt.savefig(f"{folder}{labels[col]}.pdf")
     plt.draw()
     # plt.close()
 
@@ -140,10 +140,13 @@ def plot_results(y_true, y_pred, R2_score, rmse_result):
 
 def create_lstm_model(window_object):
     # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
-    custom_LSTM = partial(layers.LSTM, dropout=0.3)
+    custom_LSTM = partial(layers.LSTM, dropout=0.3,)
+                        #kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
     lstm_model = keras.models.Sequential([
         layers.InputLayer((window_object.input_width, window_object.features_num)),
-        # custom_LSTM(4, return_sequences=True),
+        # layers.BatchNormalization(),
+        custom_LSTM(16, return_sequences=True),
+        custom_LSTM(16, return_sequences=True),
         custom_LSTM(16, return_sequences=True),
         custom_LSTM(16, return_sequences=False),
         layers.Dense(2 * window_object.label_width, #window_object.out_nums=2
@@ -234,8 +237,8 @@ def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, lo
 model_name = "lstm_model"
 # Create Window object
 w1 = WindowGenerator(train_01_df=train_01_df, train_02_df=train_02_df,
-                     val_df=val_df, test_df=test_df, 
+                     val_df=val_df, test_df=test_df, batch_size=64,
                      input_width=20, shift=4, label_width=1, out_nums=3)
 # Train and test new/existing models
 history, y_true, y_pred, r2, rmse = train_fit(w1, model_name, epochs=2000,
-                                                eval_only=False, load_best=False)
+                                                eval_only=False, load_best=True)
