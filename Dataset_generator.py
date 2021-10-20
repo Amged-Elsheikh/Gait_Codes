@@ -1,12 +1,12 @@
-# %%
 import pandas as pd
 import numpy as np
-from scipy.signal import butter, filtfilt
-# In[7]:
+
+# %%
 
 
 def load_IK(ik_file):
     """
+    Load knee and ankle joints angles
     ik_file: full extension name
     """
     IK = pd.read_csv(ik_file, header=8, sep='\t', usecols=[0, 10, 11, 17, 18])
@@ -15,14 +15,18 @@ def load_IK(ik_file):
 
 def load_ID(id_file):
     """
-    id_file: file_name/.sto
+    load knee and ankle joints moments
+    id_file: full extension name
     """
     ID = pd.read_csv(id_file, header=6, sep='\t', usecols=[0, 16, 17, 18, 19])
-    ID = ID_col_arranger(ID)
-    return ID
+    return ID_col_arranger(ID)  # Return re-arranged columns
 
 
 def load_time_intervals(periods_file):
+    """
+    Load recording periods.
+    periods_file: full name extension
+    """
     periods = pd.read_csv(periods_file, index_col="time")
     return periods
 
@@ -32,8 +36,9 @@ def merge_joints(IK, ID, periods):
     joints_data = pd.merge(IK, ID, on='time', how='inner')
     # Assert no data loss
     assert len(joints_data) == len(ID) == len(IK)
-    # Merge the columns that tells when to make measurements
-    joints_data_with_events = pd.merge(joints_data, periods, on='time', how='inner')
+    # Merge the columns that tells when to make measurements (record periods)
+    joints_data_with_events = pd.merge(
+        joints_data, periods, on='time', how='inner')
     # Assert no data lost
     assert len(joints_data_with_events) == len(joints_data)
     # Reset time to zero to match EMG
@@ -53,9 +58,9 @@ def merge_IO(features, joints_data):
     """
     downsampling is hold while merging by removing points
     """
+    # Merge all features and joints. Down sampling is done while merging
     Dataset = pd.merge(left=features, right=joints_data,
                        on='time', how='inner')
-    assert len(Dataset) == len(features)
     Dataset.set_index("time", inplace=True)
     return Dataset
 
@@ -73,11 +78,10 @@ def ID_col_arranger(ID):
 def reset_time(data):
     start_time = data['time'].min()
     data['time'] = data['time'].apply(lambda x: x-start_time)
-    data['time'] = np.around(data['time'], 2)
+    data['time'] = np.around(data['time'], 3)
     return data
 
-
-# In[8]:
+# %%
 
 
 def get_dataset(subject=None):
@@ -116,16 +120,15 @@ def get_dataset(subject=None):
         features = load_features(features_file)
         joints_data = merge_joints(IK, ID, periods)
         Dataset = merge_IO(features, joints_data)
-        Dataset.loc[Dataset['left_side'] == False,
-                    ['knee_angle_l_moment', 'ankle_angle_l_moment']] = np.nan
+        Dataset.loc[Dataset['left_side'] == False, [
+            'knee_angle_l_moment', 'ankle_angle_l_moment']] = np.nan
 
-        Dataset.loc[Dataset['right_side'] == False,
-                    ['knee_angle_r_moment', 'ankle_angle_r_moment']] = np.nan
+        Dataset.loc[Dataset['right_side'] == False, [
+            'knee_angle_r_moment', 'ankle_angle_r_moment']] = np.nan
 
-        Dataset.drop(columns=['left_side', 'right_side'], inplace=True)
+        Dataset.drop(columns=['left_side', 'right_side'],
+                     inplace=True)  # Drop periods columns
         Dataset.to_csv(output_name)
 
-# In[9]:
 
-
-get_dataset("02")
+get_dataset()
