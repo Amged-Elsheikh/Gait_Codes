@@ -19,8 +19,15 @@ class WindowGenerator:
         self.test_df = test_df
         self.features_num = len(test_df.columns)//2 - out_nums  # used for input layer
         ####### Seperate left left and right side columns #######
+        # Get number of features per sensor
+        features_per_sensor = 0
+        for col in test_df.columns:
+            if "DEMG1" in col:
+                features_per_sensor += 1
+            else:
+                break
+        self.features_per_sensor = features_per_sensor
 
-        features_per_sensor = 8
         inputs_col = train_01_df.columns[:-8].values
         labels = train_01_df.columns[-8:].values
         sensors_num = len(inputs_col)//features_per_sensor
@@ -74,15 +81,11 @@ class WindowGenerator:
         """
         return data[self.right_side_col]
 
-    def __repr__(self):
-        return '\n'.join([
-            f"Total window size: {self.total_window_size}",
-            f"input timestep: {self.input_width}",
-            f"output timestep: {self.label_width}"])
-
     def split_window(self, features):
-        inputs = features[:, self.input_slice, :-self.out_nums] # Take all EMG features and knee angle column
-        labels = features[:, self.labels_slice, -2:] # Predict ankle angle & torque
+        # Take all EMG features and knee angle column
+        inputs = features[:, self.input_slice, :-self.out_nums]
+        # Predict ankle angle & torque
+        labels = features[:, self.labels_slice, -1:]
 
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
@@ -92,9 +95,9 @@ class WindowGenerator:
 
     def IO_window(self, data):
         return keras.preprocessing.timeseries_dataset_from_array(data=data, targets=None,
-                                                                sequence_length=self.total_window_size,
-                                                                sequence_stride=1, shuffle=False,
-                                                                batch_size=self.batch_size)
+                                                                 sequence_length=self.total_window_size,
+                                                                 sequence_stride=1, shuffle=False,
+                                                                 batch_size=self.batch_size)
 
     def prepare_sides(self, data):
         """
@@ -122,7 +125,8 @@ class WindowGenerator:
         # Split window data to input and output and store results
         train_ds = train_ds.map(self.split_window)
         # Shufffle the train dataset
-        train_ds = self.preprocessing(train_ds, shuffle=True, drop_reminder=True)
+        train_ds = self.preprocessing(
+            train_ds, shuffle=True, drop_reminder=True)
         return train_ds
 
     def get_val_dataset(self):
@@ -131,7 +135,8 @@ class WindowGenerator:
         # Split window data to input and output and store results
         val_ds = val_ds.map(self.split_window)
         # Make the batch size as big as possible
-        val_ds = self.preprocessing(val_ds, batch_size=16000, shuffle=False, remove_nan=True)
+        val_ds = self.preprocessing(
+            val_ds, batch_size=16000, shuffle=False, remove_nan=True)
         return val_ds
 
     def get_evaluation_set(self):
@@ -140,13 +145,14 @@ class WindowGenerator:
         # Split window data to input and output and store results
         test_ds = test_ds.map(self.split_window)
         # Make the batch size as big as possible
-        test_ds = self.preprocessing(test_ds, batch_size=16000, shuffle=False, remove_nan=False)
+        test_ds = self.preprocessing(
+            test_ds, batch_size=16000, shuffle=False, remove_nan=False)
         return test_ds
 
     def preprocessing(self, ds, batch_size=None, shuffle=False, remove_nan=True, drop_reminder=False):
         ds = ds.unbatch()
         if remove_nan:
-            filter_nan = lambda _, y: not tf.reduce_any(tf.math.is_nan(y))
+            def filter_nan(_, y): return not tf.reduce_any(tf.math.is_nan(y))
             ds = ds.filter(filter_nan)
             pass
         ds = ds.cache()
@@ -157,3 +163,9 @@ class WindowGenerator:
         ds = ds.batch(batch_size, drop_remainder=drop_reminder)
         ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
         return ds
+
+    def __repr__(self):
+        return '\n'.join([
+            f"Total window size: {self.total_window_size}",
+            f"input timestep: {self.input_width}",
+            f"output timestep: {self.label_width}"])
