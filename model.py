@@ -148,10 +148,9 @@ def create_lstm_model(window_object):
         layers.InputLayer((window_object.input_width, window_object.features_num)),
         # layers.BatchNormalization(),
         # custom_LSTM(16, return_sequences=True),
-        custom_LSTM(16, return_sequences=True),
-        custom_LSTM(16, return_sequences=False),
-        layers.Dense(2 * window_object.label_width,
-                        kernel_initializer=tf.initializers.zeros()),
+        custom_LSTM(8, return_sequences=True),
+        custom_LSTM(8, return_sequences=False),
+        layers.Dense(2 * window_object.label_width),
         layers.Reshape([window_object.label_width, 2]) #window_object.out_nums
     ])
     return lstm_model
@@ -238,6 +237,6 @@ model_name = "lstm_model"
 # Create Window object
 w1 = WindowGenerator(train_01_df=train_01_df, train_02_df=train_02_df,
                      val_df=val_df, test_df=test_df, batch_size=64,
-                     input_width=20, shift=4, label_width=1, out_nums=3)
+                     input_width=10, shift=1, label_width=1, out_nums=3)
 # Train and test new/existing models
-history, y_true, y_pred, r2, rmse = train_fit(w1, model_name, epochs=700, eval_only=False, load_best=False)
+history, y_true, y_pred, r2, rmse = train_fit(w1, model_name, epochs=300, eval_only=False, load_best=[False])

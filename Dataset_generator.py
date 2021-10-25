@@ -90,8 +90,7 @@ def get_dataset(subject=None):
 
     files = [f'S{subject}_test', f'S{subject}_train_01',
              f'S{subject}_train_02', f'S{subject}_val']
-    settings = pd.read_csv(
-        f"../settings/dataset_settings/S{subject}_dataset_settings.csv", header=None)
+    settings = pd.read_csv(f"../settings/dataset_settings/S{subject}_dataset_settings.csv", header=None)
 
     ik_path = settings.iloc[0, 1]
     IK_files = list(map(lambda x: f"{ik_path}{x}_IK.mot", files))
