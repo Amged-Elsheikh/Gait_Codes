@@ -151,7 +151,7 @@ def get_features(DEMG):
             # Get RMS
             # RMS.append(get_RMS(window_data))
             # Get Zero-Crossing
-            ZC.append(zero_crossing(window_data))
+            # ZC.append(zero_crossing(window_data))
             # Update window
             start = start + step
             end = end + step
@@ -162,7 +162,7 @@ def get_features(DEMG):
         dataset_temp = pd.DataFrame({f'DEMG{EMG_num+1}_AR1': coeff[:, 1], f'DEMG{EMG_num+1}_AR2': coeff[:, 2],
                                      f'DEMG{EMG_num+1}_AR3': coeff[:, 3], f'DEMG{EMG_num+1}_AR4': coeff[:, 4],
                                      f'DEMG{EMG_num+1}_AR5': coeff[:, 5], f'DEMG{EMG_num+1}_AR6': coeff[:, 6],
-                                     f'DEMG{EMG_num+1}_ZC': ZC, f'DEMG{EMG_num+1}_MAV': MAV})
+                                     f'DEMG{EMG_num+1}_MAV': MAV})
         dataset = pd.concat([dataset, dataset_temp], axis=1)
 #         print(f"{EMG_label} done")
 

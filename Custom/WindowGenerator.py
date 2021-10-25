@@ -85,7 +85,7 @@ class WindowGenerator:
         # Take all EMG features and knee angle column
         inputs = features[:, self.input_slice, :-self.out_nums]
         # Predict ankle angle & torque
-        labels = features[:, self.labels_slice, -1:]
+        labels = features[:, self.labels_slice, -2:]
 
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
