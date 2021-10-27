@@ -7,7 +7,7 @@ from tensorflow.keras import layers
 import os
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 from tensorflow import keras
 K = keras.backend
@@ -30,7 +30,7 @@ trials = list(map(lambda x: f"{dataset_folder}S{subject}_{x}_dataset.csv", trial
 # Scaling functions
 
 
-def scale_moment(data, weight=w, scale=False, scale_angle=False, scale_features=True):
+def scale_moment(data, weight=w, scale=True, scale_angle=False):
     if scale:
         data.iloc[:, -4:] = data.iloc[:, -4:]/weight
     if scale_angle:
@@ -38,18 +38,24 @@ def scale_moment(data, weight=w, scale=False, scale_angle=False, scale_features=
         minimum = -120
         maximum = 10
         data.loc[:,["knee_angle_r", "knee_angle_l"]] = (data.loc[:,["knee_angle_r", "knee_angle_l"]]-minimum)/(maximum-minimum)
-    if scale_features:
-        scaler = MinMaxScaler(feature_range=(0,1))
-        scaler.fit(data.iloc[:,:-8])
-        data.iloc[:,:-8] = scaler.transform(data.iloc[:,:-8])
     return data
 
+def scale_features(data, scaler):
+    data.iloc[:,:-8] = scaler.transform(data.iloc[:,:-8])
+    return data
 # Import and scale the data
+
 train_01_df = scale_moment(pd.read_csv(trials[0], index_col='time'))
+
+scaler = MinMaxScaler(feature_range=(0,1))
+scaler.fit(train_01_df.iloc[:1000,:-8])
+
 train_02_df = scale_moment(pd.read_csv(trials[1], index_col='time'))
 val_df = scale_moment(pd.read_csv(trials[2], index_col='time'))
 test_df = scale_moment(pd.read_csv(trials[3], index_col='time'))
 
+for data in [train_01_df, train_02_df, val_df, test_df]:
+    data = scale_features(data, scaler)
 
 # window-object is a custom object
 def make_dataset(window_object):
@@ -147,9 +153,9 @@ def create_lstm_model(window_object):
     lstm_model = keras.models.Sequential([
         layers.InputLayer((window_object.input_width, window_object.features_num)),
         # layers.BatchNormalization(),
-        # custom_LSTM(16, return_sequences=True),
-        custom_LSTM(8, return_sequences=True),
-        custom_LSTM(8, return_sequences=False),
+        custom_LSTM(128, return_sequences=True),
+        custom_LSTM(128, return_sequences=True),
+        custom_LSTM(128, return_sequences=False),
         layers.Dense(2 * window_object.label_width),
         layers.Reshape([window_object.label_width, 2]) #window_object.out_nums
     ])
@@ -239,4 +245,4 @@ w1 = WindowGenerator(train_01_df=train_01_df, train_02_df=train_02_df,
                      val_df=val_df, test_df=test_df, batch_size=64,
                      input_width=10, shift=1, label_width=1, out_nums=3)
 # Train and test new/existing models
-history, y_true, y_pred, r2, rmse = train_fit(w1, model_name, epochs=300, eval_only=False, load_best=[False])
+history, y_true, y_pred, r2, rmse = train_fit(w1, model_name, epochs=300, eval_only=False, load_best=False)
