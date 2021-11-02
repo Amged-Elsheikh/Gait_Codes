@@ -5,25 +5,28 @@ Created on Thu Jul 29 14:26:07 2021
 """
 
 import pandas as pd
+import json
 import os
-
+## Load subject details
+with open("subject_details.json","r") as f:
+    subject_details = json.load(f)
 
 def get_IO_dir(subject=None, motion_type="dynamic"):
-    # Load Motion Setting File
-    setting = pd.read_csv(
-        f'../settings/motion_settings/S{subject}_motion.csv', header=None, usecols=[0, 1])
+    if subject==None:
+        subject = input("insert subject number: ")
+    # Create motion Setting File
+    date = subject_details[f"S{subject}"]["date"]
     if motion_type == "static":
-        input_path = setting.iloc[2, 1]  # Inputs folder
-        output_path = setting.iloc[3, 1]  # Outputs folder
-    elif motion_type == "dynamic":
-        input_path = setting.iloc[0, 1]  # Inputs folder
-        output_path = setting.iloc[1, 1]  # Outputs folder
+        input_path =  f"../Data/S{subject}/{date}/Statics/" # Inputs folder
+        output_path = f"../OpenSim/S{subject}/{date}/Statics/"  # Outputs folder
 
-    print("The print will only shows files names, not full directory")
-    Inputs = os.listdir(input_path)
-    print("Input files: ", Inputs)
+    elif motion_type == "dynamic":
+        input_path = f"../Data/S{subject}/{date}/Dynamics/Motion_Data/"  # Inputs folder
+        output_path = f"../OpenSim/S{subject}/{date}/Dynamics/Motion_Data/"  # Outputs folder
+    # Get files names
+    trials = ["train_01", "train_02", "val", "test"]
+    Inputs = list(map(lambda x: f"S{subject}_{x}.csv", trials))
     Outputs = list(map(lambda x: f"{x}".replace('csv', 'trc'), Inputs))
-    print("Output files: ", Outputs)
 
     # Get inputs and outputs full directories
     Inputs = list(map(lambda file: input_path+file, Inputs))
@@ -95,4 +98,4 @@ def csv2trc(subject=None):
 
 
 Markers_number = 39
-csv2trc("03")
+csv2trc("01")
