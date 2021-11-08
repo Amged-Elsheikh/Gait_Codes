@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
-
-# %%
-
+import json
 
 def load_IK(ik_file):
     """
@@ -88,25 +86,29 @@ def get_dataset(subject=None):
     if subject == None:
         subject = input("Please write subject number in a format XX: ")
 
+    with open("subject_details.json","r") as f:
+        subject_details = json.load(f)
+
+    date = subject_details[f"S{subject}"]["date"]
+    # Get trials names
     files = [f'S{subject}_test', f'S{subject}_train_01',
              f'S{subject}_train_02', f'S{subject}_val']
-    settings = pd.read_csv(f"../settings/dataset_settings/S{subject}_dataset_settings.csv", header=None)
 
-    ik_path = settings.iloc[0, 1]
+    ik_path = f"../OpenSim/S{subject}/{date}/IK/"
     IK_files = list(map(lambda x: f"{ik_path}{x}_IK.mot", files))
 
-    id_path = settings.iloc[1, 1]
+    id_path = f"../OpenSim/S{subject}/{date}/ID/"
     ID_files = list(map(lambda x: f"{id_path}{x}/inverse_dynamics.sto", files))
 
-    record_periods_path = settings.iloc[2, 1]
+    record_periods_path = f"../Outputs/S{subject}/{date}/record_periods/"
     periods_files = list(
         map(lambda x: f"{record_periods_path}{x}_record_periods.csv", files))
 
-    features_path = settings.iloc[3, 1]
+    features_path = f"../Outputs/S{subject}/{date}/EMG/"
     Features_files = list(
         map(lambda x: f"{features_path}{x}_features.csv", files))
 
-    output_folder = settings.iloc[4, 1]
+    output_folder = f"../Dataset/S{subject}/"
     output_files = list(
         map(lambda x: f"{output_folder}{x}_dataset.csv", files))
 
@@ -130,4 +132,4 @@ def get_dataset(subject=None):
         Dataset.to_csv(output_name)
 
 
-get_dataset()
+get_dataset("02")

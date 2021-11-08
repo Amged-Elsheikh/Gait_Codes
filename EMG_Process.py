@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
 """
 1. Filter data
 2. remove mean
@@ -7,7 +5,6 @@
 4. remove artifacts
 5. get features
 """
-# In[1]:
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -16,10 +13,12 @@ import os
 from statsmodels.tsa.ar_model import AutoReg
 # from sklearn.preprocessing import StandardScaler as std
 from sklearn.preprocessing import MinMaxScaler
+import json
 pd.set_option('display.max_columns', None)
 plt.rcParams["figure.figsize"] = [14, 10]
 
-# In[26]:
+with open("subject_details.json","r") as f:
+    subject_details = json.load(f)
 
 
 def get_emg_files(subject, outputs_path):
@@ -35,13 +34,11 @@ def get_emg_files(subject, outputs_path):
 
 
 def load_emg_data(inputs_path, emg_file):
-    emg = pd.read_csv(f"{inputs_path}{emg_file}", header=12)
+    emg = pd.read_csv(f"{inputs_path}{emg_file}", header=8)
     emg.columns = emg.columns.str.replace(": EMG.*", "", regex=True)
     emg.columns = emg.columns.str.replace("Trigno IM ", "", regex=True)
     emg.columns = emg.columns.str.replace("X [s]", "time", regex=False)
     emg.set_index("time", inplace=True)
-    # work with EMG signals from the Shank only
-    emg = emg[[f"sensor {i}" for i in range(7, 13)]]
     return emg
 
 
@@ -92,9 +89,7 @@ def plot_all_emg(emg, file_name=None):
     plt.suptitle(file_name)
     plt.draw()
 
-# ### Features Functions
-
-# In[27]:
+# Features Functions
 
 
 def get_AR_coeffs(data, num_coeff=6):
@@ -120,22 +115,20 @@ def get_RMS(data):
 def wave_length(data):
     return np.sum(abs(np.diff(data)))
 
-# In[]:
-
 
 def get_features(DEMG):
     step = 0.05
     dataset = pd.DataFrame()
     time_limit = max(DEMG.index)
     print(f"time_limit: {time_limit}s")
-    for EMG_num in range(len(DEMG.columns)):
+    for EMG_num in range(1,len(DEMG.columns)+1):
         start = 0
         end = 0.250
         coeff = []
         MAV = []
         RMS = []
         # ZC = []
-        EMG_label = f"sensor {EMG_num+7}"
+        EMG_label = f"sensor {EMG_num}"
         sensor_data = DEMG[EMG_label]
         # Extract features
         while (end < time_limit):
@@ -158,7 +151,7 @@ def get_features(DEMG):
         RMS = np.array(RMS)
         MAV = np.array(MAV)
         dataset_temp = pd.DataFrame(
-            {f'DEMG{EMG_num+1}_MAV': MAV, f'DEMG{EMG_num+1}_RMS': RMS})
+            {f'DEMG{EMG_num}_MAV': MAV, f'DEMG{EMG_num}_RMS': RMS})
         dataset = pd.concat([dataset, dataset_temp], axis=1)
 #         print(f"{EMG_label} done")
 
@@ -169,21 +162,18 @@ def get_features(DEMG):
 
 
 def plot_MAV(dataset, emg_file):
-    MAV_columns = [f'DEMG{i+1}_MAV' for i in range(6)]
+    MAV_columns = [f'DEMG{i+1}_MAV' for i in range(8)]
     MAV_data = dataset[MAV_columns]
     plot_all_emg(MAV_data, emg_file)
 
-# In[48]:
 
-
-def emg_to_features(subject, remove_artifacts=True):
+def emg_to_features(subject=None, remove_artifacts=True):
     if not subject:
         subject = input("Please input subject number in XX format: ")
-    # Load settings
-    settings = pd.read_csv(
-        f"../settings/emg_settings/S{subject}_emg_settings.csv", header=None)
-    inputs_path = settings.iloc[0, 1]
-    outputs_path = settings.iloc[1, 1]
+    # Load pathes
+    date = subject_details[f"S{subject}"]["date"]
+    inputs_path = f"../Data/S{subject}/{date}/EMG/"
+    outputs_path = f"../Outputs/S{subject}/{date}/EMG/"
     # Get EMG files directories
     inputs_names, output_files = get_emg_files(subject, outputs_path)
     for emg_file, output_file in zip(inputs_names, output_files):
@@ -197,5 +187,5 @@ def emg_to_features(subject, remove_artifacts=True):
         plot_MAV(dataset, emg_file)
 
 
-emg_to_features(subject="02", remove_artifacts=True)
+emg_to_features(subject="01", remove_artifacts=True)
 plt.show()
