@@ -23,8 +23,8 @@ def remove_system_gap(data_L, data_R):
         first set these values for NaN and then interpolate missing values.
     """
     columns = data_L.columns[3:-1]
-    data_L.loc[data_L[' Fz'] == 0, columns] = np.nan
-    data_R.loc[data_R[' Fz'] == 0, columns] = np.nan
+    data_L.loc[data_L['Fy'] == 0, columns] = np.nan
+    data_R.loc[data_R['Fy'] == 0, columns] = np.nan
     data_L = data_L.interpolate(method="linear")
     data_R = data_R.interpolate(method="linear")
     data_L = data_L.fillna(method="bfill")
@@ -33,24 +33,29 @@ def remove_system_gap(data_L, data_R):
 
 
 def system_match(data_L, data_R):
+    """
+    Match opti-track and force plates axes.
+    Remove system gaps if any.
 
+    """
+    # To apply rotation, change column names.
     col_names = {" Fx": "Fx", " Fy": "Fz", " Fz": "Fy",
                  " Mx": "Mx", " My": "Mz", " Mz": "My",
                  " Cx": "Cx", " Cy": "Cz", " Cz": "Cy",
                  " MocapTime": "time"}
-    # System stop working someat some frames creating a gap, fill the gaps using interpolatoion
-    data_L, data_R = remove_system_gap(data_L, data_R)
-    # To apply rotation, change column names and change the sign for the new z-axis data.
+    
     data_L.rename(columns=col_names, inplace=True)
     data_R.rename(columns=col_names, inplace=True)
+    # System stop working someat some frames creating a gap, fill the gaps using interpolatoion
+    data_L, data_R = remove_system_gap(data_L, data_R)
     # Match opti-track and force Plates origins
     data_L["Cz"] = data_L["Cz"].apply(lambda x: x+0.25)
     data_R["Cz"] = data_R["Cz"].apply(lambda x: x+0.25)
     data_L["Cx"] = data_L["Cx"].apply(lambda x: x+0.25)
     data_R["Cx"] = data_R["Cx"].apply(lambda x: x+0.75)
     # Complete the rotation by getting -z
-#     data_L[["Fz","Fx"]] = data_L[["Fz","Fx"]].apply(lambda x: -x)
-#     data_R[["Fz","Fx"]] = data_R[["Fz","Fx"]].apply(lambda x: -x)
+    data_L.loc[:,["Fz","Fx", "Mx", "Mz"]] = data_L[["Fz","Fx", "Mx", "Mz"]].apply(lambda x: -x)
+    data_R.loc[:,["Fz","Fx", "Mx", "Mz"]] = data_R[["Fz","Fx", "Mx", "Mz"]].apply(lambda x: -x)
     return data_L, data_R
 
 
@@ -58,8 +63,8 @@ def remove_offset(data_L, data_R, remove=True):
     if remove:
         columns = data_L.columns[3:-3]  # Choose Forces and Moments
         for col in columns:
-            data_L[col] = data_L[col] - data_L.loc[5:60, col].mean()
-            data_R[col] = data_R[col] - data_R.loc[5:60, col].mean()
+            data_L.loc[:,col] = data_L[col] - data_L.loc[5:60, col].mean()
+            data_R.loc[:,col] = data_R[col] - data_R.loc[5:60, col].mean()
     return data_L, data_R
 
 
@@ -81,8 +86,8 @@ def apply_filter(data_L, data_R):
         data_L.loc[:, col] = filtfilt(b2, a2, data_L[col])
         data_R.loc[:, col] = filtfilt(b2, a2, data_R[col])
     # Make any force less than a 0.1*w to zero
-    # data_L.loc[data_L['Fy'] < 0.1*w, ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
-    # data_R.loc[data_R['Fy'] < 0.1*w, ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
+    data_L.loc[data_L['Fy'] < 0.1*w, ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
+    data_R.loc[data_R['Fy'] < 0.1*w, ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
     return data_L, data_R
 
 
@@ -255,7 +260,7 @@ for pair in pairs:
 
 #     # Rename columns and merge Left and right side
     # Filter the data
-    data_L = filter_COP(data_L, "L")
+    # data_L = filter_COP(data_L, "L")
 #     data_R = filter_COP(data_R,"R")
     data_L, data_R = apply_filter(data_L, data_R)
     force_data = GRF_data(data_L, data_R)
