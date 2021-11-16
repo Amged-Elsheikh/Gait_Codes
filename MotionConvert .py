@@ -106,4 +106,4 @@ def csv2trc(subject=None):
 
 
 Markers_number = 39
-csv2trc("01")
+csv2trc()

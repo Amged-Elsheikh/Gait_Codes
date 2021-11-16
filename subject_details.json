@@ -7,8 +7,10 @@
         "height": 183
     },
     "S02": {
-        "date": 20210721,
+        "date": 20211111,
         "name": "Chatrin",
-        "weight": 60.05
+        "weight": 60,
+		"age":23,
+		"height":180 
     }
 }
