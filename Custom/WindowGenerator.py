@@ -6,42 +6,46 @@ from tensorflow import keras
 
 class WindowGenerator:
     def __init__(self, train_01_df, train_02_df, val_df, test_df,
-                 input_width=50, label_width=None, shift=1,
-                 batch_size=128, out_nums=3):
+                 input_width=10, label_width=None, shift=1,
+                 batch_size=128, add_knee=False, out_labels=["ankle moment"]):
 
         self.batch_size = batch_size
-        self.out_nums = out_nums
+        self.out_labels = out_labels
+        self.out_nums = len(self.out_labels)
+        self.add_knee = add_knee
         ####### Store the raw data #######
 
         self.train_01_df = train_01_df
         self.train_02_df = train_02_df
         self.val_df = val_df
         self.test_df = test_df
-        self.features_num = len(test_df.columns)//2 - out_nums  # used for input layer
         ####### Seperate left left and right side columns #######
         # Get number of features per sensor
-        features_per_sensor = 0
+        self.features_per_sensor = 0
         for col in test_df.columns:
             if "DEMG1" in col:
-                features_per_sensor += 1
+                self.features_per_sensor += 1
             else:
                 break
-        self.features_per_sensor = features_per_sensor
 
         inputs_col = train_01_df.columns[:-8].values
-        labels = train_01_df.columns[-8:].values
-        sensors_num = len(inputs_col)//features_per_sensor
+        sensors_num = len(inputs_col)//self.features_per_sensor
         left_side_col = []
         right_side_col = []
         for i in range(sensors_num//2):
             left_side_col.extend(
-                inputs_col[features_per_sensor*2*i: features_per_sensor*2*i+features_per_sensor].tolist())
+                inputs_col[self.features_per_sensor*2*i: self.features_per_sensor*2*i+self.features_per_sensor].tolist())
 
             right_side_col.extend(
-                inputs_col[features_per_sensor*2*i+features_per_sensor: features_per_sensor*2*i+features_per_sensor*2].tolist())
-        # append outputs
-        left_side_col.extend([labels[2], labels[3], labels[6], labels[7]])
-        right_side_col.extend([labels[0], labels[1], labels[4], labels[5]])
+                inputs_col[self.features_per_sensor*2*i+self.features_per_sensor: self.features_per_sensor*2*i+self.features_per_sensor*2].tolist())
+        # append knee angle as input and outputs
+        if self.add_knee:
+            left_side_col.append("Left knee angle")
+            right_side_col.append("Right knee angle")
+        self.features_num = len(left_side_col) # used for input layer
+
+        left_side_col.extend(list(map(lambda x: f"Left {x}", self.out_labels)))
+        right_side_col.extend(list(map(lambda x: f"Right {x}", self.out_labels)))
         self.left_side_col = left_side_col
         self.right_side_col = right_side_col
 
@@ -83,9 +87,9 @@ class WindowGenerator:
 
     def split_window(self, features):
         # Take all EMG features and knee angle column
-        inputs = features[:, self.input_slice, :-self.out_nums]
+        inputs = features[:, self.input_slice, :-self.out_nums] #[Batch_size, timestep, features/labels]
         # Predict ankle angle & torque
-        labels = features[:, self.labels_slice, -2:]
+        labels = features[:, self.labels_slice, -self.out_nums:]
 
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
