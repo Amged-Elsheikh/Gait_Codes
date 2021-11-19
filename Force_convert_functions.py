@@ -4,76 +4,76 @@ import matplotlib.pyplot as plt
 from scipy.signal import butter, filtfilt
 import re
 import os
-import plotly.express as px
-import plotly.io as pio
-pio.renderers.default = "browser"
+import json
 
-subject = "03"
-setting = pd.read_csv(
-    f'../settings/force_settings/S{subject}_force_settings.csv', header=None)
+with open("subject_details.json", "r") as f:
+    subject_details = json.load(f)
+
+subject = "02"  # input(f"insert subject number in XX format: ")
+date = subject_details[f"S{subject}"]["date"]
+w = subject_details[f"S{subject}"]["weight"]
 
 
-Weights = {"S02": 60.5, "S03": 67.8}
-w = Weights[f'S{subject}']
+def read_data(path): 
+    return pd.read_csv(path, header=31)
+# Rename columns for OpenSim
 
-# ## Functions
 
-# ### System sometimes failed to send data (columns of zeros). Next function to solve this issue
+def get_output_name(pair):
+     return re.sub("_forceplate_[0-9].csv", "_grf.sto", pair)
 
 
 def remove_system_gap(data_L, data_R):
+    """
+    In some cases force plates stop recording and send only zeros. This function will\\
+        first set these values for NaN and then interpolate missing values.
+    """
     columns = data_L.columns[3:-1]
-    data_L.loc[data_L[' Fz'] == 0, columns] = np.nan
-    data_R.loc[data_R[' Fz'] == 0, columns] = np.nan
-    data_L = data_L.interpolate(method="linear")
-    data_R = data_R.interpolate(method="linear")
-    data_L = data_L.fillna(method="bfill")
-    data_R = data_R.fillna(method="bfill")
+    data_L.loc[data_L['Fy'] == 0, columns] = np.nan
+    data_R.loc[data_R['Fy'] == 0, columns] = np.nan
+    data_L.iloc[:,:] = data_L.interpolate(method="linear")
+    data_R.iloc[:,:] = data_R.interpolate(method="linear")
+    data_L.iloc[:,:] = data_L.fillna(method="bfill")
+    data_R.iloc[:,:] = data_R.fillna(method="bfill")
     return data_L, data_R
 
-def system_match(data_L, data_R):
 
+def system_match(data_L, data_R):
+    """
+    Match opti-track and force plates axes.
+    Remove system gaps if any.
+
+    """
+    # To apply rotation, change column names.
     col_names = {" Fx": "Fx", " Fy": "Fz", " Fz": "Fy",
                  " Mx": "Mx", " My": "Mz", " Mz": "My",
                  " Cx": "Cx", " Cy": "Cz", " Cz": "Cy",
                  " MocapTime": "time"}
 
-    # System stop working someat some frames creating a gap, fill the gaps using interpolatoion
-    data_L, data_R = remove_system_gap(data_L, data_R)
-
-    # To apply rotation, change column names and change the sign for the new z-axis data.
     data_L.rename(columns=col_names, inplace=True)
     data_R.rename(columns=col_names, inplace=True)
-
+    # System stop working someat some frames creating a gap, fill the gaps using interpolatoion
+    data_L, data_R = remove_system_gap(data_L, data_R)
     # Match opti-track and force Plates origins
-    data_L["Cz"] = data_L["Cz"].apply(lambda x: x+0.25)
-    data_R["Cz"] = data_R["Cz"].apply(lambda x: x+0.25)
-
-    data_L["Cx"] = data_L["Cx"].apply(lambda x: x+0.25)
-    data_R["Cx"] = data_R["Cx"].apply(lambda x: x+0.75)
-
+    data_L.loc[:, "Cz"] = data_L["Cz"].apply(lambda x: x+0.25)
+    data_R.loc[:, "Cz"] = data_R["Cz"].apply(lambda x: x+0.25)
+    data_L.loc[:, "Cx"] = data_L["Cx"].apply(lambda x: x+0.25)
+    data_R.loc[:, "Cx"] = data_R["Cx"].apply(lambda x: x+0.75)
     # Complete the rotation by getting -z
-#     data_L[["Fz","Fx"]] = data_L[["Fz","Fx"]].apply(lambda x: -x)
-#     data_R[["Fz","Fx"]] = data_R[["Fz","Fx"]].apply(lambda x: -x)
-
+    data_L.loc[:, ["Fz", "Fx", "Mx", "Mz"]] = data_L[[
+        "Fz", "Fx", "Mx", "Mz"]].apply(lambda x: -x)
+    data_R.loc[:, ["Fz", "Fx", "Mx", "Mz"]] = data_R[[
+        "Fz", "Fx", "Mx", "Mz"]].apply(lambda x: -x)
     return data_L, data_R
-
-
-# #### Remove offset
 
 
 def remove_offset(data_L, data_R, remove=True):
     if remove:
         columns = data_L.columns[3:-3]  # Choose Forces and Moments
         for col in columns:
-            data_L[col] = data_L[col] - data_L.loc[5:60, col].mean()
-            data_R[col] = data_R[col] - data_R.loc[5:60, col].mean()
+            data_L.loc[:, col] = data_L.loc[:, col] - data_L.loc[5:60, col].mean()
+            data_R.loc[:, col] = data_R.loc[:, col] - data_R.loc[5:60, col].mean()
     return data_L, data_R
-
-
-# #### Apply filter
-
-# In[22]:
 
 
 f = 6  # Filter frequency
@@ -87,55 +87,29 @@ def apply_filter(data_L, data_R):
                "Mx", "My", "Mz",
                "Cx", "Cz"]
     for col in columns:
-        #         if col=="Fy":
-        #             data_L[col] = filtfilt(b2, a2, abs(data_L[col]))
-        #             data_R[col] = filtfilt(b2, a2, abs(data_R[col]))
-        #         else:
-        data_L.loc[:, col] = filtfilt(b2, a2, data_L[col])
-        data_R.loc[:, col] = filtfilt(b2, a2, data_R[col])
+        data_L.loc[:, col] = filtfilt(b2, a2, data_L.loc[:, col])
+        data_R.loc[:, col] = filtfilt(b2, a2, data_R.loc[:, col])
     # Make any force less than a 0.1*w to zero
-    data_L.loc[data_L['Fy'] < 0.1*w, ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
-    data_R.loc[data_R['Fy'] < 0.1*w, ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
+    data_L.loc[np.abs(data_L['Fy']) < 0.1*w,
+               ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
+    data_R.loc[np.abs(data_R['Fy']) < 0.1*w,
+               ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
     return data_L, data_R
 
 
-# ### There is a delay in system (approxmately 10 frames)
+# There is a delay in system (various delay may change )
 
-# In[23]:
-
-
-def shift_data(data_L, data_R, shift_value=10):
+def shift_data(data_L, data_R, shift_key):
     shift_columns = data_R.columns[3:]
-    data_L[shift_columns] = data_L[shift_columns].shift(
-        shift_value, fill_value=0)
-    data_R[shift_columns] = data_R[shift_columns].shift(
-        shift_value, fill_value=0)
+    data_L.loc[:, shift_columns] = data_L[shift_columns].shift(
+        subject_details[f"S{subject}"]["delay"][shift_key][0], fill_value=0)
+    data_R.loc[:, shift_columns] = data_R[shift_columns].shift(
+        subject_details[f"S{subject}"]["delay"][shift_key][1], fill_value=0)
     return data_L, data_R
 
-
-# ### Rename columns for OpenSim
-
-
-def get_output_name(pair):
-    return re.sub("_forceplate_[0-9].csv", "_grf.sto", pair)
-
-experement_period = {"S02":{"train_01":{"start_time":500 ,"end_time":18800},
-                            "train_02":{"start_time":400 ,"end_time":18700},
-                            "val":     {"start_time":630 ,"end_time":20230},
-                            "test":    {"start_time":300 ,"end_time": 6000}},
-
-                     "S03":{"train_01":{"start_time":420 ,"end_time":18120},
-                            "train_02":{"start_time":460 ,"end_time":19260},
-                            "val":     {"start_time":600 ,"end_time":18300},
-                            "test":    {"start_time":400 ,"end_time": 6900}}}
 
 def col_rearrange(data):
     return data[["time", "Fx", "Fy", "Fz", "Mx", "My", "Mz", "Cx", "Cy", "Cz"]]
-
-
-# ### COP Filter
-
-# In[27]:
 
 
 def filter_COP(data, side=None):
@@ -205,9 +179,6 @@ def put_cop_in_foot(current, p1, p2, axis='X'):
         return current
 
 
-# ### Process GRF
-
-
 def GRF_data(data_L, data_R):
     data_L = col_rearrange(data_L)
     data_R = col_rearrange(data_R)
@@ -241,30 +212,22 @@ def save_force_data(force_data, output_path, output_name):
                 f'nRows={nRows}\n' + f'nColumns={nColumns}\n' + 'inDegrees=yes\n' + 'endheader\n' + old)
 
 
-input_path = setting.iloc[0, 1]
-output_path = setting.iloc[1, 1]
+input_path = f"../Data/S{subject}/{date}/Dynamics/Force_Data/"
+output_path = f"../OpenSim/S{subject}/{date}/Dynamics/Force_Data/"
 files = os.listdir(input_path)
 pairs = []
-def read_data(path): return pd.read_csv(path, header=31)
 
-
-markers_settings = pd.read_csv(
-    f'../settings/motion_settings/S{subject}_motion.csv', header=None, usecols=[0, 1])
-markers_path = markers_settings.iloc[0, 1]
+markers_path = f"../Data/S{subject}/{date}/Dynamics/motion_data/"
 cop_limits_columns = ['time', 'X1', 'Z1', "Z2", "X2"]
 cop_limits_columns_remove = ['X1', 'Z1', "Z2", "X2"]
 
 # Get files names
-for current in os.listdir(input_path):
-    files.remove(current)
-    if len(files) != -0:
-        for j in files:
-            if current[:16] == j[:16]:  # ensure we pick exact experement trial file
-                # Make left and right pairs in a tuple
-                pairs.append((current, j))
+trials = ["train_01", "train_02", "val", "test"]
+pairs = list(map(lambda x: (
+    f"S{subject}_{x}_forceplate_1.csv", f"S{subject}_{x}_forceplate_2.csv"), trials))
 
 # Process each trial
-for pair in pairs:
+for i, pair in enumerate(pairs):
     output_name = get_output_name(pair[0])
 
     # Load Left(1) and Right(2) force plates data
@@ -282,7 +245,7 @@ for pair in pairs:
     data_L, data_R = remove_offset(data_L, data_R)
 
     # Remove the delay
-    data_L, data_R = shift_data(data_L, data_R, shift_value=0)
+    data_L, data_R = shift_data(data_L, data_R, shift_key=trials[i])
 
     # Add COP limits from Opti-track
     # Right side
@@ -300,7 +263,7 @@ for pair in pairs:
 
 #     # Rename columns and merge Left and right side
     # Filter the data
-    data_L = filter_COP(data_L, "L")
+    # data_L = filter_COP(data_L, "L")
 #     data_R = filter_COP(data_R,"R")
     data_L, data_R = apply_filter(data_L, data_R)
     force_data = GRF_data(data_L, data_R)

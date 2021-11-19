@@ -1,0 +1,20 @@
+{
+    "S01": {
+        "date": 20211026,
+        "name": "Amged",
+        "weight": 83,
+        "age": 25,
+        "height": 183
+    },
+    "S02": {
+        "date": 20211111,
+        "name": "Chatrin",
+        "weight": 60,
+		"age":23,
+		"height":180,
+        "delay": {"train_01":[-13,-13],
+                  "train_02":[-4,-4],
+                  "val":[-6,-6],
+                  "test":[-5,-5]}
+    }
+}

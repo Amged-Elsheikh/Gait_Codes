@@ -1,3 +1,4 @@
+from numpy.lib.shape_base import column_stack
 from Custom.WindowGenerator import WindowGenerator
 # import matplotlib as mpl
 from functools import partial
@@ -7,51 +8,44 @@ from tensorflow.keras import layers
 import os
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+import json
+from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 from tensorflow import keras
 K = keras.backend
 
 # mpl.rcParams['figure.dpi'] = 110
-Weight = {"S02": 60.5, "S03":67.8}
+
 model_dic = {}
 
 if not tf.test.is_built_with_cuda():
     raise print("No GPU found")
 
+with open("subject_details.json", "r") as f:
+    subject_details = json.load(f)
 
-# %% set subject details
-subject = "02"
-w = Weight[f'S{subject}']
-dataset_folder = f"../Dataset/S{subject}/"
-trials = ["train_01", "train_02", "val", "test"]
-trials = list(map(lambda x: f"{dataset_folder}S{subject}_{x}_dataset.csv", trials))
 
 # Scaling functions
-
-
-def scale_moment(data, weight=w, scale=False, scale_angle=False, scale_features=True):
+def scale_moment(data, weight, scale=True):
     if scale:
         data.iloc[:, -4:] = data.iloc[:, -4:]/weight
-    if scale_angle:
-        # minimum and maximum possible knee angles according to opensim model
-        minimum = -120
-        maximum = 10
-        data.loc[:,["knee_angle_r", "knee_angle_l"]] = (data.loc[:,["knee_angle_r", "knee_angle_l"]]-minimum)/(maximum-minimum)
-    if scale_features:
-        scaler = MinMaxScaler(feature_range=(0,1))
-        scaler.fit(data.iloc[:,:-8])
-        data.iloc[:,:-8] = scaler.transform(data.iloc[:,:-8])
     return data
 
-# Import and scale the data
-train_01_df = scale_moment(pd.read_csv(trials[0], index_col='time'))
-train_02_df = scale_moment(pd.read_csv(trials[1], index_col='time'))
-val_df = scale_moment(pd.read_csv(trials[2], index_col='time'))
-test_df = scale_moment(pd.read_csv(trials[3], index_col='time'))
 
+def scale_angle(data, angle_scaler, scale=True):
+    if scale:
+        columns = data.columns[-8:-4]
+        data[columns] = angle_scaler.transform(data[columns])
+    return data
+
+
+def scale_features(data, scaler):
+    data.iloc[:, :-8] = scaler.transform(data.iloc[:, :-8])
+    return data
 
 # window-object is a custom object
+
+
 def make_dataset(window_object):
     train_set = window_object.get_train_dataset()
     val_set = window_object.get_val_dataset()
@@ -113,17 +107,17 @@ def plot_learning_curve(history):
         return None
 
 
-def plot_results(y_true, y_pred, R2_score, rmse_result):
+def plot_results(window_object, y_true, y_pred, R2_score, rmse_result):
     global time
     time = [i/20 for i in range(len(y_true))]
     plt.figure("Prediction")
-    labels = ["Ankle angle", "Ankle moment"]
-    for i, col in enumerate(labels):
-        plt.subplot(2, 1, i+1)
+    labels = window_object.out_labels
+    for i, col in enumerate(list(labels)):
+        plt.subplot(len(labels), 1, i+1)
         print(f"{col} R2 score: {R2_score[i]}")
         print(f"{col} RMSE result: {rmse_result[i]}")
-        plt.plot(time, y_true[:, i],
-                 time, y_pred[:, i],"r--")
+        plt.plot(time, w*y_true[:, i],
+                 time, w*y_pred[:, i], "r--")
         plt.title(col)
         plt.legend(["y_true", "y_pred"])
         plt.xlim((time[-600], time[-100]))
@@ -138,20 +132,20 @@ def plot_results(y_true, y_pred, R2_score, rmse_result):
     # plt.close()
 
 # Models
-
-
 def create_lstm_model(window_object):
     # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
     custom_LSTM = partial(layers.LSTM, dropout=0.3,)
-                        #kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
+    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
     lstm_model = keras.models.Sequential([
-        layers.InputLayer((window_object.input_width, window_object.features_num)),
+        layers.InputLayer((window_object.input_width,
+                          window_object.features_num)),
         # layers.BatchNormalization(),
-        # custom_LSTM(16, return_sequences=True),
-        custom_LSTM(8, return_sequences=True),
-        custom_LSTM(8, return_sequences=False),
-        layers.Dense(2 * window_object.label_width),
-        layers.Reshape([window_object.label_width, 2]) #window_object.out_nums
+        # custom_LSTM(128, return_sequences=True),
+        custom_LSTM(64, return_sequences=True),
+        custom_LSTM(64, return_sequences=False),
+        layers.Dense(window_object.out_nums * window_object.label_width),
+        # window_object.out_nums
+        layers.Reshape([window_object.label_width, window_object.out_nums])
     ])
     return lstm_model
 
@@ -187,11 +181,11 @@ def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, lo
     K.clear_session()
     model = model_dic[model_name](window_object)
     model.compile(optimizer=keras.optimizers.Nadam(learning_rate=lr),
-                    loss="mean_squared_error")
+                  loss="mean_squared_error")
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-                                filepath=f"{folder}S{subject}_{model_name}.hdf5",
-                                save_weights_only=True, monitor='val_loss',
-                                save_best_only=True)
+        filepath=f"{folder}S{subject}_{model_name}.hdf5",
+        save_weights_only=True, monitor='val_loss',
+        save_best_only=True)
 
     if load_best:
         try:
@@ -200,7 +194,7 @@ def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, lo
             print("No saved model existing. weights will be initialized")
     ##############################################################################################################
     # Train Model
-    try: # Train or load the best model the model
+    try:  # Train or load the best model the model
         if not eval_only:
             history = model.fit(x=train_set, validation_data=val_set,
                                 epochs=epochs, callbacks=[model_checkpoint_callback])
@@ -226,17 +220,38 @@ def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, lo
     y_true = y_true[:, -1, :]
     ##############################################################################################################
     ## Evaluation and plot
-    r2_score = nan_R2(y_true, y_pred)
-    rmse_result = nan_rmse(y_true, y_pred)
-    plot_results(y_true, y_pred, r2_score, rmse_result)
+    r2_score = nan_R2(w*y_true, w*y_pred)
+    rmse_result = nan_rmse(w*y_true, w*y_pred)
+    plot_results(window_object, y_true, y_pred, r2_score, rmse_result)
     plt.show()
     return history, y_true, y_pred, r2_score, rmse_result
 
+# Import and scale the data
+
+
+subject = "02"
+w = subject_details[f'S{subject}']['weight']
+dataset_folder = f"../Dataset/S{subject}/"
+trials = ["train_01", "train_02", "val", "test"]
+trials = list(map(lambda x: f"{dataset_folder}{x}_dataset.csv", trials))
+train_01_df = scale_moment(pd.read_csv(trials[0], index_col='time'), weight=w)
+train_02_df = scale_moment(pd.read_csv(trials[1], index_col='time'), weight=w)
+val_df = scale_moment(pd.read_csv(trials[2], index_col='time'), weight=w)
+test_df = scale_moment(pd.read_csv(trials[3], index_col='time'), weight=w)
+
+scaler = MinMaxScaler(feature_range=(-1, 1))
+scaler.fit(train_01_df.iloc[:1000, :-8])
+angle_scaler = MinMaxScaler(feature_range=(0, 1))
+angle_scaler.fit(train_01_df.iloc[:1000, -8:-4])
+for data in [train_01_df, train_02_df, val_df, test_df]:
+    data = scale_features(data, scaler)
+    data = scale_angle(data, angle_scaler)
 
 model_name = "lstm_model"
 # Create Window object
 w1 = WindowGenerator(train_01_df=train_01_df, train_02_df=train_02_df,
                      val_df=val_df, test_df=test_df, batch_size=64,
-                     input_width=10, shift=1, label_width=1, out_nums=3)
+                     input_width=5, shift=1, label_width=1)
 # Train and test new/existing models
-history, y_true, y_pred, r2, rmse = train_fit(w1, model_name, epochs=300, eval_only=False, load_best=[False])
+history, y_true, y_pred, r2, rmse = train_fit(
+    w1, model_name, epochs=50, eval_only=True, load_best=False)

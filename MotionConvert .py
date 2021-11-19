@@ -5,38 +5,43 @@ Created on Thu Jul 29 14:26:07 2021
 """
 
 import pandas as pd
+import json
 import os
-
+## Load subject details
+with open("subject_details.json","r") as f:
+    subject_details = json.load(f)
 
 def get_IO_dir(subject=None, motion_type="dynamic"):
-    # Load Motion Setting File
-    setting = pd.read_csv(
-        f'../settings/motion_settings/S{subject}_motion.csv', header=None, usecols=[0, 1])
+    if subject==None:
+        subject = input("insert subject number: ")
+    # Create motion Setting File
+    date = subject_details[f"S{subject}"]["date"]
     if motion_type == "static":
-        input_path = setting.iloc[2, 1]  # Inputs folder
-        output_path = setting.iloc[3, 1]  # Outputs folder
+        Inputs =  f"../Data/S{subject}/{date}/Statics/S{subject}_static.csv" # Inputs folder
+        Outputs = f"../OpenSim/S{subject}/{date}/Statics/S{subject}_static.trc"  # Outputs folder
+        return Inputs, Outputs
+
     elif motion_type == "dynamic":
-        input_path = setting.iloc[0, 1]  # Inputs folder
-        output_path = setting.iloc[1, 1]  # Outputs folder
+        input_path = f"../Data/S{subject}/{date}/Dynamics/motion_data/"  # Inputs folder
+        output_path = f"../OpenSim/S{subject}/{date}/Dynamics/motion_data/"  # Outputs folder
+        # Get files names
+        trials = ["train_01", "train_02", "val", "test"]
+        Inputs = list(map(lambda x: f"S{subject}_{x}.csv", trials))
+        Outputs = list(map(lambda x: f"{x}".replace('csv', 'trc'), Inputs))
 
-    print("The print will only shows files names, not full directory")
-    Inputs = os.listdir(input_path)
-    print("Input files: ", Inputs)
-    Outputs = list(map(lambda x: f"{x}".replace('csv', 'trc'), Inputs))
-    print("Output files: ", Outputs)
-
-    # Get inputs and outputs full directories
-    Inputs = list(map(lambda file: input_path+file, Inputs))
-    Outputs = list(map(lambda file: output_path+file, Outputs))
-    return Inputs, Outputs
+        # Get inputs and outputs full directories
+        Inputs = list(map(lambda file: input_path+file, Inputs))
+        Outputs = list(map(lambda file: output_path+file, Outputs))
+        return Inputs, Outputs
 
 
 def get_markers_labels(Input, Markers_Set_Name="Amged:"):
-
+    """
+    Input: input data path. Type: string
+    """
     # Getting Markers labels
     Label = pd.read_csv(Input, header=2, nrows=0).columns.values
     Markers_Label = []  # Define a list to receive markers
-    Markers_Set_Name = Markers_Set_Name
 
     for i in range(0, Markers_number):
         Temp = Label[2+3*i]
@@ -84,15 +89,21 @@ def csv2trc(subject=None):
     if subject == None:
         subject = input("insert subject number in XX format: ")
 
-    motion_types = ("dynamic", "static")
+    motion_types = ("static", "dynamic")
     for motion_type in motion_types:
         print(f"{motion_type} Data")
         Inputs, Outputs = get_IO_dir(subject, motion_type=motion_type)
-        for Input, Output in zip(Inputs, Outputs):
-            Markers_Label = get_markers_labels(Input)
-            num_frames = convert_data(Input, Output)
-            process_trc(Output, Markers_Label, num_frames)
+
+        if motion_type=="dynamic":
+            for Input, Output in zip(Inputs, Outputs):
+                Markers_Label = get_markers_labels(Input)
+                num_frames = convert_data(Input, Output)
+                process_trc(Output, Markers_Label, num_frames)
+        else:
+            Markers_Label = get_markers_labels(Inputs)
+            num_frames = convert_data(Inputs, Outputs)
+            process_trc(Outputs, Markers_Label, num_frames)
 
 
 Markers_number = 39
-csv2trc("03")
+csv2trc()
