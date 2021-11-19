@@ -14,27 +14,29 @@ from statsmodels.tsa.ar_model import AutoReg
 # from sklearn.preprocessing import StandardScaler as std
 from sklearn.preprocessing import MinMaxScaler
 import json
+
 pd.set_option('display.max_columns', None)
 plt.rcParams["figure.figsize"] = [14, 10]
 
 with open("subject_details.json","r") as f:
     subject_details = json.load(f)
 
+sensors_num = 6
 
 def get_emg_files(subject, outputs_path):
     # Get inputs names
-    inputs_names = ["test", "train_01", "train_02", "val"]
+    trials = ["test", "train_01", "train_02", "val"]
     # add path, subject number and file extension
-    inputs_names = list(map(lambda x: f"S{subject}_{x}_EMG.csv", inputs_names))
+    inputs_names = list(map(lambda x: f"S{subject}_{x}_EMG.csv", trials))
     # Get outputs names
-    output_files = list(map(lambda x: f"{outputs_path}{x}", inputs_names))
+    output_files = list(map(lambda x: f"{outputs_path}{x}_features.csv", trials))
     output_files = list(
         map(lambda x: x.replace("_EMG", "_features"), output_files))
     return inputs_names, output_files
 
 
 def load_emg_data(inputs_path, emg_file):
-    emg = pd.read_csv(f"{inputs_path}{emg_file}", header=8)
+    emg = pd.read_csv(f"{inputs_path}{emg_file}", header=sensors_num)
     emg.columns = emg.columns.str.replace(": EMG.*", "", regex=True)
     emg.columns = emg.columns.str.replace("Trigno IM ", "", regex=True)
     emg.columns = emg.columns.str.replace("X [s]", "time", regex=False)
@@ -162,7 +164,7 @@ def get_features(DEMG):
 
 
 def plot_MAV(dataset, emg_file):
-    MAV_columns = [f'DEMG{i+1}_MAV' for i in range(8)]
+    MAV_columns = [f'DEMG{i+1}_MAV' for i in range(sensors_num)]
     MAV_data = dataset[MAV_columns]
     plot_all_emg(MAV_data, emg_file)
 
@@ -187,5 +189,5 @@ def emg_to_features(subject=None, remove_artifacts=True):
         plot_MAV(dataset, emg_file)
 
 
-emg_to_features(subject="01", remove_artifacts=True)
+emg_to_features("02", remove_artifacts=True)
 plt.show()

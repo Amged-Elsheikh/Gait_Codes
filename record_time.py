@@ -7,6 +7,7 @@ with open("subject_details.json","r") as f:
 
 subject = input("Please input subject number in XX format: ")
 date = subject_details[f"S{subject}"]["date"]
+
 inputs_path = f"../Data/S{subject}/{date}/record_periods/"
 outputs_path = f"../Outputs/S{subject}/{date}/record_periods/"
 input_files = ['train_01', 'train_02', 'val', 'test']
@@ -19,7 +20,7 @@ left_time_sum = 0
 right_time_sum = 0
 for input_file in input_files:
     # Create output file name
-    output_file = f"{outputs_path}S{subject}_{input_file}_record_periods.csv"
+    output_file = f"{outputs_path}{input_file}_record_periods.csv"
     # Read the data
     periods = pd.read_excel(f"{inputs_path}{input_file}.xlsx")
     # Drop last row and record time length columns
@@ -30,7 +31,6 @@ for input_file in input_files:
     # Create new boolen Dataframe
     left_df = pd.DataFrame([False]*periods.iloc[-1,1], columns=["left_side"])
     right_df = pd.DataFrame([False]*periods.iloc[-1,3], columns=["right_side"])
-    assert len(right_df)==len(left_df)
     # map the periods intervals to sequances
     interval2seq(left_df, "left")
     interval2seq(right_df, "right")
@@ -39,6 +39,6 @@ for input_file in input_files:
     # Merge all data
     df = pd.concat([time,left_df,right_df], axis=1)
     # save to csv
-    df.to_csv(output_file)
+    df.to_csv(output_file, index=False)
     # print results
     print(f"{input_file}: left time: {np.sum(left_df)[0]/100}s \t right time: {np.sum(right_df)[0]/100}s \n record_time: {len(right_df)/100}s")
