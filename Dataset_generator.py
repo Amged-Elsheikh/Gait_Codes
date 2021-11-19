@@ -2,6 +2,16 @@ import pandas as pd
 import numpy as np
 import json
 
+new_col = {'knee_angle_r': "Right knee angle",
+           'ankle_angle_r': 'Right ankle angle',
+           'knee_angle_l': "Left knee angle",
+           'ankle_angle_l': 'Left ankle angle',
+           'ankle_angle_r_moment': "Right ankle moment",
+           'knee_angle_r_moment': "Right knee moment",
+           'ankle_angle_l_moment': "Left ankle moment",
+           'knee_angle_l_moment': "Left knee moment"}
+
+
 def load_IK(ik_file):
     """
     Load knee and ankle joints angles
@@ -38,7 +48,7 @@ def merge_joints(IK, ID, periods):
     joints_data_with_events = pd.merge(
         joints_data, periods, on='time', how='inner')
     # Assert no data lost
-    assert len(joints_data_with_events) == len(joints_data)
+    # assert len(joints_data_with_events) == len(joints_data)
     # Reset time to zero to match EMG
     joints_data_with_events = reset_time(joints_data_with_events)
     return joints_data_with_events
@@ -79,6 +89,9 @@ def reset_time(data):
     data['time'] = np.around(data['time'], 3)
     return data
 
+
+new_labels = {'ankle_angle_l', 'knee_angle_r_moment', 'ankle_angle_r_moment',
+              'knee_angle_l_moment', 'ankle_angle_l_moment', 'Unnamed: 0', 'left_side', 'right_side'}
 # %%
 
 
@@ -86,16 +99,15 @@ def get_dataset(subject=None):
     if subject == None:
         subject = input("Please write subject number in a format XX: ")
 
-    with open("subject_details.json","r") as f:
+    with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
 
     date = subject_details[f"S{subject}"]["date"]
     # Get trials names
-    files = [f'S{subject}_test', f'S{subject}_train_01',
-             f'S{subject}_train_02', f'S{subject}_val']
+    files = ['train_01', 'train_02', 'val', 'test']
 
     ik_path = f"../OpenSim/S{subject}/{date}/IK/"
-    IK_files = list(map(lambda x: f"{ik_path}{x}_IK.mot", files))
+    IK_files = list(map(lambda x: f"{ik_path}S{subject}_{x}_IK.mot", files))
 
     id_path = f"../OpenSim/S{subject}/{date}/ID/"
     ID_files = list(map(lambda x: f"{id_path}{x}/inverse_dynamics.sto", files))
@@ -129,6 +141,8 @@ def get_dataset(subject=None):
 
         Dataset.drop(columns=['left_side', 'right_side'],
                      inplace=True)  # Drop periods columns
+        
+        Dataset.rename(columns=new_col,inplace=True)
         Dataset.to_csv(output_name)
 
 
