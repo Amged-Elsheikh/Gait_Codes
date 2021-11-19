@@ -11,6 +11,10 @@
         "name": "Chatrin",
         "weight": 60,
 		"age":23,
-		"height":180 
+		"height":180,
+        "delay": {"train_01":[-13,-13],
+                  "train_02":[-4,-4],
+                  "val":[-6,-6],
+                  "test":[-5,-5]}
     }
 }
