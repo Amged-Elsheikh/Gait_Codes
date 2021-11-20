@@ -116,18 +116,17 @@ def plot_results(window_object, y_true, y_pred, R2_score, rmse_result):
         plt.subplot(len(labels), 1, i+1)
         print(f"{col} R2 score: {R2_score[i]}")
         print(f"{col} RMSE result: {rmse_result[i]}")
-        plt.plot(time, w*y_true[:, i],
-                 time, w*y_pred[:, i], "r--")
+        plt.plot(time, y_true[:, i], linewidth=2.5)
+        plt.plot(time, y_pred[:, i], "r--", linewidth=2.5,)
         plt.title(col)
         plt.legend(["y_true", "y_pred"])
         plt.xlim((time[-600], time[-100]))
+        plt.xlabel("Time [s]")
         if "moment" in col:
-            plt.xlabel("Time [s]")
-        if i+1 == 1:
-            plt.ylabel("Angle [Degree]")
-        elif i+1 == 2:
             plt.ylabel("Moment [Nm]")
-    # plt.savefig(f"{folder}{labels[col]}.pdf")
+        else:
+            plt.ylabel("Angle [Degree]")
+    plt.savefig(f"{folder}{labels[i]}.pdf")
     plt.draw()
     # plt.close()
 
@@ -240,9 +239,9 @@ val_df = scale_moment(pd.read_csv(trials[2], index_col='time'), weight=w)
 test_df = scale_moment(pd.read_csv(trials[3], index_col='time'), weight=w)
 
 scaler = MinMaxScaler(feature_range=(-1, 1))
-scaler.fit(train_01_df.iloc[:1000, :-8])
+scaler.fit(train_01_df.iloc[:400, :-8])
 angle_scaler = MinMaxScaler(feature_range=(0, 1))
-angle_scaler.fit(train_01_df.iloc[:1000, -8:-4])
+angle_scaler.fit(train_01_df.iloc[:400, -8:-4])
 for data in [train_01_df, train_02_df, val_df, test_df]:
     data = scale_features(data, scaler)
     data = scale_angle(data, angle_scaler)
@@ -254,4 +253,4 @@ w1 = WindowGenerator(train_01_df=train_01_df, train_02_df=train_02_df,
                      input_width=5, shift=1, label_width=1)
 # Train and test new/existing models
 history, y_true, y_pred, r2, rmse = train_fit(
-    w1, model_name, epochs=50, eval_only=True, load_best=False)
+    w1, model_name, epochs=3000, eval_only=True, load_best=False)
