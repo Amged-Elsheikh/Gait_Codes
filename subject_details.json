@@ -4,7 +4,11 @@
         "name": "Amged",
         "weight": 83,
         "age": 25,
-        "height": 183
+        "height": 183,
+        "delay": {"train_01":[-10,-10],
+            "train_02":[-13,-13],
+            "val":[-12,-12],
+            "test":[-3,-3]}
     },
     "S02": {
         "date": 20211111,
@@ -16,5 +20,27 @@
                   "train_02":[-4,-4],
                   "val":[-6,-6],
                   "test":[-5,-5]}
+    },
+	"S03": {
+        "date": 20210823,
+        "name": "Demsy",
+        "weight": 67.8,
+		"age":0,
+		"height":0,
+        "delay": {"train_01":[0],
+                  "train_02":[0],
+                  "val":[0],
+                  "test":[0]}
+    },
+    "S04": {
+        "date": 20211122,
+        "name": "Adam",
+        "weight": 71,
+		"age":23,
+		"height":172,
+        "delay": {"train_01":[-11,-11],
+                  "train_02":[0,0],
+                  "val":[-4,-4],
+                  "test":[-4,-4]}
     }
 }
