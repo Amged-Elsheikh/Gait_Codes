@@ -9,7 +9,7 @@ import json
 with open("subject_details.json", "r") as f:
     subject_details = json.load(f)
 
-subject = "02"  # input(f"insert subject number in XX format: ")
+subject = input(f"insert subject number in XX format: ")
 date = subject_details[f"S{subject}"]["date"]
 w = subject_details[f"S{subject}"]["weight"]
 

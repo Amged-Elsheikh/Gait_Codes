@@ -228,7 +228,7 @@ def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, lo
 # Import and scale the data
 
 
-subject = "02"
+subject = "01"
 w = subject_details[f'S{subject}']['weight']
 dataset_folder = f"../Dataset/S{subject}/"
 trials = ["train_01", "train_02", "val", "test"]
@@ -253,4 +253,4 @@ w1 = WindowGenerator(train_01_df=train_01_df, train_02_df=train_02_df,
                      input_width=5, shift=1, label_width=1)
 # Train and test new/existing models
 history, y_true, y_pred, r2, rmse = train_fit(
-    w1, model_name, epochs=3000, eval_only=True, load_best=False)
+    w1, model_name, epochs=100, eval_only=True, load_best=False)

@@ -189,5 +189,5 @@ def emg_to_features(subject=None, remove_artifacts=True):
         plot_MAV(dataset, emg_file)
 
 
-emg_to_features("02", remove_artifacts=True)
+emg_to_features(remove_artifacts=True)
 plt.show()
