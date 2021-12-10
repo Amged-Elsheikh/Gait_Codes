@@ -160,7 +160,7 @@ def create_window_generator(subject=None):
     # Create Window object
     window_object = WindowGenerator(train_01_df=train_01_df, train_02_df=train_02_df,
                                     val_df=val_df, test_df=test_df, batch_size=64,
-                                    input_width=5, shift=1, label_width=1)
+                                    input_width=15, shift=1, label_width=1)
     return window_object
 
 
@@ -267,9 +267,9 @@ if __name__ == '__main__':
     w2 = create_window_generator(subject="2")
     w4 = create_window_generator(subject="4")
     
-    model_name = "lstm_model"
+    model_name = "conv_model"
 
 # Train and test new/existing models
 for model_name in model_dic.keys():
-    history, y_true, y_pred, r2, rmse = train_fit("02", model_name, epochs=500, eval_only=False, load_best=False)
+    history, y_true, y_pred, r2, rmse = train_fit("02", model_name, epochs=500, eval_only=False, load_best=True)
     print(model_name)
