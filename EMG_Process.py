@@ -9,10 +9,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import signal
-import os
+# import os
 from statsmodels.tsa.ar_model import AutoReg
-# from sklearn.preprocessing import StandardScaler as std
-from sklearn.preprocessing import MinMaxScaler
+# from sklearn.preprocessing import MinMaxScaler
 import json
 
 pd.set_option('display.max_columns', None)
@@ -45,7 +44,7 @@ def load_emg_data(inputs_path, emg_file):
 
 
 def apply_notch_filter(data):
-    fs = 1/0.0009  # Hz
+    fs = 1/0.0009  # sampling frequancy in Hz 
     f0 = 50  # Notched frequancy
     Q = 30  # Quality factor
     b, a = signal.iirnotch(f0, Q, fs)
@@ -82,12 +81,16 @@ def process_emg_signal(emg, remove_artifacts=True):
 
 
 def plot_all_emg(emg, file_name=None):
-    m = 2  # number of columns
+    m = 1  # number of columns
     n = int(len(emg.columns)/2)  # number of raws
     plt.figure(file_name)
+    muscles = ["Tibialis Anterior", "Gastrocnemius Medialis", "Soleus"]
     for i in range(n):
         plt.subplot(n, m, i+1)
         plt.plot(emg.index, emg.iloc[:, 2*i], emg.index, emg.iloc[:, 2*i+1])
+        plt.title(muscles[i])
+        plt.xlim((emg.index[0],emg.index[-1]+0.01))
+    plt.xlabel("Time [s]")
     plt.suptitle(file_name)
     plt.draw()
 
@@ -127,33 +130,37 @@ def get_features(DEMG):
         start = 0
         end = 0.250
         coeff = []
-        MAV = []
+        # MAV = []
         RMS = []
-        # ZC = []
+        ZC = []
         EMG_label = f"sensor {EMG_num}"
         sensor_data = DEMG[EMG_label]
         # Extract features
         while (end < time_limit):
             window_data = sensor_data[(DEMG.index >= start) & (
                 DEMG.index < end)].to_numpy()
-            # Get the AR coefficients
-            # coeff.append(get_AR_coeffs(window_data))
-            # Get the MAV
-            MAV.append(get_MAV(window_data))
-            # Get RMS
+            # #Get the AR coefficients
+            coeff.append(get_AR_coeffs(window_data))
+            # #Get the MAV
+            # MAV.append(get_MAV(window_data))
+            # #Get RMS
             RMS.append(get_RMS(window_data))
-            # Get Zero-Crossing
-            # ZC.append(zero_crossing(window_data))
+            # #Get Zero-Crossing
+            ZC.append(zero_crossing(window_data))
             # Update window
             start = start + step
             end = end + step
 
-        # coeff = np.array(coeff)
-        # ZC = np.array(ZC)
+        coeff = np.array(coeff)
+        ZC = np.array(ZC)
         RMS = np.array(RMS)
-        MAV = np.array(MAV)
-        dataset_temp = pd.DataFrame(
-            {f'DEMG{EMG_num}_MAV': MAV, f'DEMG{EMG_num}_RMS': RMS})
+        # MAV = np.array(MAV)
+
+        dataset_temp = pd.DataFrame({f'DEMG{EMG_num}_AR1': coeff[:, 1], f'DEMG{EMG_num}_AR2': coeff[:, 2],
+                                     f'DEMG{EMG_num}_AR3': coeff[:, 3], f'DEMG{EMG_num}_AR4': coeff[:, 4],
+                                     f'DEMG{EMG_num}_AR5': coeff[:, 5], f'DEMG{EMG_num}_AR6': coeff[:, 6],
+                                     f'DEMG{EMG_num}_ZC': ZC, f'DEMG{EMG_num}_RMS': RMS})
+
         dataset = pd.concat([dataset, dataset_temp], axis=1)
 #         print(f"{EMG_label} done")
 
@@ -163,10 +170,10 @@ def get_features(DEMG):
     return dataset
 
 
-def plot_MAV(dataset, emg_file):
-    MAV_columns = [f'DEMG{i+1}_MAV' for i in range(sensors_num)]
-    MAV_data = dataset[MAV_columns]
-    plot_all_emg(MAV_data, emg_file)
+def plot_RMS(dataset, emg_file):
+    RMS_columns = [f'DEMG{i+1}_RMS' for i in range(sensors_num)]
+    RMS_data = dataset[RMS_columns]
+    plot_all_emg(RMS_data, emg_file)
 
 
 def emg_to_features(subject=None, remove_artifacts=True):
@@ -186,8 +193,8 @@ def emg_to_features(subject=None, remove_artifacts=True):
         # save dataset
         dataset.to_csv(output_file)
         # Plot data
-        plot_MAV(dataset, emg_file)
+        plot_RMS(dataset, emg_file)
 
-
-emg_to_features(remove_artifacts=True)
-plt.show()
+for s in ["01","02","04"]:
+    emg_to_features(subject = s, remove_artifacts=True)
+    plt.show()
