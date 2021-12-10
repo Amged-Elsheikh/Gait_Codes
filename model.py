@@ -133,6 +133,19 @@ def plot_results(window_object, y_true, y_pred, R2_score, rmse_result):
     # plt.close()
 
 
+def choose_features(data, features=["RMS"]):
+    new_columns = []
+    for col in data.columns:
+        if "DEMG" in col:  # Confirm the column is a feature column
+            for feature in features:
+                if feature.lower() in col.lower():
+                    new_columns.append(col)
+                    continue
+        else: # append all labels
+            new_columns.append(col)
+    return data[new_columns]
+
+
 def create_window_generator(subject=None):
     if subject == None:
         subject = input("Please input subject number in XX format: ")
@@ -156,7 +169,11 @@ def create_window_generator(subject=None):
     for data in [train_01_df, train_02_df, val_df, test_df]:
         data = scale_features(data, scaler)
         data = scale_angle(data, angle_scaler)
-
+    
+    train_01_df = choose_features(train_01_df, features=features)
+    train_02_df = choose_features(train_02_df, features=features)
+    val_df = choose_features(val_df, features=features)
+    test_df = choose_features(test_df, features=features)
     # Create Window object
     window_object = WindowGenerator(train_01_df=train_01_df, train_02_df=train_02_df,
                                     val_df=val_df, test_df=test_df, batch_size=64,
@@ -228,10 +245,10 @@ def train_fit(subject, model_name, epochs=1, lr=0.001, eval_only=False, load_bes
 
 # #Models
 
-
 def create_lstm_model(window_object):
     # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
-    custom_LSTM = partial(layers.LSTM, dropout=0.3,)#kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
+    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
+    custom_LSTM = partial(layers.LSTM, dropout=0.3,)
     lstm_model = keras.models.Sequential([
         layers.InputLayer((window_object.input_width,
                           window_object.features_num)),
@@ -240,36 +257,54 @@ def create_lstm_model(window_object):
         custom_LSTM(4, return_sequences=True),
         custom_LSTM(4, return_sequences=False),
         layers.Dense(window_object.out_nums * window_object.label_width),
-        # window_object.out_nums
         layers.Reshape([window_object.label_width, window_object.out_nums])
     ])
     return lstm_model
+
 
 def create_conv_model(window_object):
     conv_model = keras.models.Sequential([
         layers.InputLayer((window_object.input_width,
                           window_object.features_num)),
         # layers.BatchNormalization(),
-        layers.Conv1D(filters=10, kernel_size=3, strides=1, padding='same'),
-        layers.BatchNormalization(),
         layers.Conv1D(filters=20, kernel_size=3, strides=1, padding='same'),
         layers.BatchNormalization(),
+        layers.MaxPool1D(pool_size=2, strides=1, padding="valid"),
+        layers.Conv1D(filters=30, kernel_size=3, strides=1, padding='same'),
+        layers.BatchNormalization(),
+        layers.MaxPool1D(pool_size=2, strides=1, padding="valid"),
         layers.Conv1D(filters=window_object.out_nums, kernel_size=1, strides=1)
     ])
     return conv_model
 
 
+def create_nn_model(window_object):
+    nn_model = keras.models.Sequential([
+        layers.InputLayer((window_object.input_width,
+                          window_object.features_num)),
+        layers.Flatten(),
+        layers.Dense(32),
+        layers.Dense(32),
+        layers.Dense(32),
+        layers.Dense(window_object.out_nums * window_object.label_width),
+        layers.Reshape([window_object.label_width, window_object.out_nums])
+    ])
+    return nn_model
+
+
 model_dic["lstm_model"] = create_lstm_model
 model_dic["conv_model"] = create_conv_model
+model_dic["nn_model"] = create_nn_model
 
 if __name__ == '__main__':
+    features = ["RMS","ZC"]
     w1 = create_window_generator(subject="1")
     w2 = create_window_generator(subject="2")
     w4 = create_window_generator(subject="4")
-    
-    model_name = "conv_model"
+
+    model_name = "nn_model"
 
 # Train and test new/existing models
 for model_name in model_dic.keys():
-    history, y_true, y_pred, r2, rmse = train_fit("02", model_name, epochs=500, eval_only=False, load_best=True)
+    history, y_true, y_pred, r2, rmse = train_fit("02", model_name, epochs=200, eval_only=True, load_best=True)
     print(model_name)
