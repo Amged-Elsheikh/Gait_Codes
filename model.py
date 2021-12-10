@@ -1,4 +1,3 @@
-from numpy.lib.shape_base import column_stack
 from Custom.WindowGenerator import WindowGenerator
 # import matplotlib as mpl
 from functools import partial
@@ -13,6 +12,9 @@ from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 from tensorflow import keras
 K = keras.backend
+# import os
+# os.environ["MKL_THREADING_LAYER"] = "GNU"
+# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 
 # mpl.rcParams['figure.dpi'] = 110
 
@@ -130,49 +132,48 @@ def plot_results(window_object, y_true, y_pred, R2_score, rmse_result):
     plt.draw()
     # plt.close()
 
-# Models
-def create_lstm_model(window_object):
-    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
-    custom_LSTM = partial(layers.LSTM, dropout=0.3,)
-    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
-    lstm_model = keras.models.Sequential([
-        layers.InputLayer((window_object.input_width,
-                          window_object.features_num)),
-        # layers.BatchNormalization(),
-        # custom_LSTM(128, return_sequences=True),
-        custom_LSTM(64, return_sequences=True),
-        custom_LSTM(64, return_sequences=False),
-        layers.Dense(window_object.out_nums * window_object.label_width),
-        # window_object.out_nums
-        layers.Reshape([window_object.label_width, window_object.out_nums])
-    ])
-    return lstm_model
+
+def create_window_generator(subject=None):
+    if subject == None:
+        subject = input("Please input subject number in XX format: ")
+    if len(subject) == 1:
+        subject = "0" + subject
+    w = subject_details[f'S{subject}']['weight']
+    dataset_folder = f"../Dataset/S{subject}/"
+    trials = ["train_01", "train_02", "val", "test"]
+    trials = list(map(lambda x: f"{dataset_folder}{x}_dataset.csv", trials))
+    train_01_df = scale_moment(pd.read_csv(
+        trials[0], index_col='time'), weight=w)
+    train_02_df = scale_moment(pd.read_csv(
+        trials[1], index_col='time'), weight=w)
+    val_df = scale_moment(pd.read_csv(trials[2], index_col='time'), weight=w)
+    test_df = scale_moment(pd.read_csv(trials[3], index_col='time'), weight=w)
+
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    scaler.fit(train_01_df.iloc[:400, :-8])
+    angle_scaler = MinMaxScaler(feature_range=(0, 1))
+    angle_scaler.fit(train_01_df.iloc[:400, -8:-4])
+    for data in [train_01_df, train_02_df, val_df, test_df]:
+        data = scale_features(data, scaler)
+        data = scale_angle(data, angle_scaler)
+
+    # Create Window object
+    window_object = WindowGenerator(train_01_df=train_01_df, train_02_df=train_02_df,
+                                    val_df=val_df, test_df=test_df, batch_size=64,
+                                    input_width=5, shift=1, label_width=1)
+    return window_object
 
 
-def create_conv_model(window_object):
-    conv_model = keras.models.Sequential([
-        layers.InputLayer((window_object.input_width,
-                          window_object.features_num)),
-        layers.BatchNormalization(),
-        layers.Conv1D(filters=10, kernel_size=3, strides=1, padding='same'),
-        layers.BatchNormalization(),
-        layers.Conv1D(filters=20, kernel_size=3, strides=1, padding='same'),
-        layers.Conv1D(filters=window_object.out_nums, kernel_size=1, strides=1)
-    ])
-    return conv_model
+def train_fit(subject, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False):
 
-
-model_dic["lstm_model"] = create_lstm_model
-model_dic["conv_model"] = create_conv_model
-
-
-def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False):
+    window_object = create_window_generator(subject)
     # setup model folder
     global folder
     folder = f"../Results/indiviuals/{model_name}/S{subject}/"
     if not os.path.exists(folder):
         os.makedirs(folder)
 
+    w = subject_details[f'S{subject}']['weight']
     # Get all dataset
     train_set, val_set, test_set = make_dataset(window_object)
     ##############################################################################################################
@@ -225,32 +226,50 @@ def train_fit(window_object, model_name, epochs=1, lr=0.001, eval_only=False, lo
     plt.show()
     return history, y_true, y_pred, r2_score, rmse_result
 
-# Import and scale the data
+# #Models
 
 
-subject = "01"
-w = subject_details[f'S{subject}']['weight']
-dataset_folder = f"../Dataset/S{subject}/"
-trials = ["train_01", "train_02", "val", "test"]
-trials = list(map(lambda x: f"{dataset_folder}{x}_dataset.csv", trials))
-train_01_df = scale_moment(pd.read_csv(trials[0], index_col='time'), weight=w)
-train_02_df = scale_moment(pd.read_csv(trials[1], index_col='time'), weight=w)
-val_df = scale_moment(pd.read_csv(trials[2], index_col='time'), weight=w)
-test_df = scale_moment(pd.read_csv(trials[3], index_col='time'), weight=w)
+def create_lstm_model(window_object):
+    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
+    custom_LSTM = partial(layers.LSTM, dropout=0.3,)#kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
+    lstm_model = keras.models.Sequential([
+        layers.InputLayer((window_object.input_width,
+                          window_object.features_num)),
+        # layers.BatchNormalization(),
+        # custom_LSTM(4, return_sequences=True),
+        custom_LSTM(4, return_sequences=True),
+        custom_LSTM(4, return_sequences=False),
+        layers.Dense(window_object.out_nums * window_object.label_width),
+        # window_object.out_nums
+        layers.Reshape([window_object.label_width, window_object.out_nums])
+    ])
+    return lstm_model
 
-scaler = MinMaxScaler(feature_range=(-1, 1))
-scaler.fit(train_01_df.iloc[:400, :-8])
-angle_scaler = MinMaxScaler(feature_range=(0, 1))
-angle_scaler.fit(train_01_df.iloc[:400, -8:-4])
-for data in [train_01_df, train_02_df, val_df, test_df]:
-    data = scale_features(data, scaler)
-    data = scale_angle(data, angle_scaler)
+def create_conv_model(window_object):
+    conv_model = keras.models.Sequential([
+        layers.InputLayer((window_object.input_width,
+                          window_object.features_num)),
+        # layers.BatchNormalization(),
+        layers.Conv1D(filters=10, kernel_size=3, strides=1, padding='same'),
+        layers.BatchNormalization(),
+        layers.Conv1D(filters=20, kernel_size=3, strides=1, padding='same'),
+        layers.BatchNormalization(),
+        layers.Conv1D(filters=window_object.out_nums, kernel_size=1, strides=1)
+    ])
+    return conv_model
 
-model_name = "lstm_model"
-# Create Window object
-w1 = WindowGenerator(train_01_df=train_01_df, train_02_df=train_02_df,
-                     val_df=val_df, test_df=test_df, batch_size=64,
-                     input_width=5, shift=1, label_width=1)
+
+model_dic["lstm_model"] = create_lstm_model
+model_dic["conv_model"] = create_conv_model
+
+if __name__ == '__main__':
+    w1 = create_window_generator(subject="1")
+    w2 = create_window_generator(subject="2")
+    w4 = create_window_generator(subject="4")
+    
+    model_name = "lstm_model"
+
 # Train and test new/existing models
-history, y_true, y_pred, r2, rmse = train_fit(
-    w1, model_name, epochs=100, eval_only=True, load_best=False)
+for model_name in model_dic.keys():
+    history, y_true, y_pred, r2, rmse = train_fit("02", model_name, epochs=500, eval_only=False, load_best=False)
+    print(model_name)
