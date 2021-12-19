@@ -21,7 +21,7 @@ def create_window_generator(subject=None):
     trials = ["train_01", "train_02", "val", "test"]
     trials = list(map(lambda x: f"../Dataset/S{subject}/{x}_dataset.csv", trials))
     # #Load data
-    train_01_df = (pd.read_csv(trials[0], index_col="time"),)
+    train_01_df = pd.read_csv(trials[0], index_col="time")
     train_02_df = pd.read_csv(trials[1], index_col="time")
     val_df = pd.read_csv(trials[2], index_col="time")
     test_df = pd.read_csv(trials[3], index_col="time")
@@ -33,7 +33,7 @@ def create_window_generator(subject=None):
     # #Scale the dataset
     for data in [train_01_df, train_02_df, val_df, test_df]:
         data = scale_function(
-            data, weights=w, features_scaler=features_scaler, angle_scaler=angle_scaler
+            data, weight=w, features_scaler=features_scaler, angle_scaler=angle_scaler
         )
 
     train_01_df = choose_features(train_01_df, features=features)
@@ -80,7 +80,7 @@ def train_fit_gm(
     window_object_2 = create_window_generator(subject[1])
     # Get all dataset
     train_set_1, val_set_1 = window_object_1.get_gm_train_val_dataset()
-    train_set_2, val_set_2 = window_object_1.get_gm_train_val_dataset()
+    train_set_2, val_set_2 = window_object_2.get_gm_train_val_dataset()
     train_set = window_object_1.preprocessing(train_set_1.concatenate(train_set_2))
     val_set = window_object_1.preprocessing(val_set_1.concatenate(val_set_2))
 
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     features = ["RMS", "ZC"]
     add_knee = False
     out_labels = ["ankle moment"]
-    model_name = "nn_model"
+    # model_name = "nn_model"
 
     model_dic = {}
 
