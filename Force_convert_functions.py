@@ -14,13 +14,13 @@ date = subject_details[f"S{subject}"]["date"]
 w = subject_details[f"S{subject}"]["weight"]
 
 
-def read_data(path): 
+def read_data(path):
     return pd.read_csv(path, header=31)
 # Rename columns for OpenSim
 
 
 def get_output_name(pair):
-     return re.sub("_forceplate_[0-9].csv", "_grf.sto", pair)
+    return re.sub("_forceplate_[0-9].csv", "_grf.sto", pair)
 
 
 def remove_system_gap(data_L, data_R):
@@ -31,10 +31,10 @@ def remove_system_gap(data_L, data_R):
     columns = data_L.columns[3:-1]
     data_L.loc[data_L['Fy'] == 0, columns] = np.nan
     data_R.loc[data_R['Fy'] == 0, columns] = np.nan
-    data_L.iloc[:,:] = data_L.interpolate(method="linear")
-    data_R.iloc[:,:] = data_R.interpolate(method="linear")
-    data_L.iloc[:,:] = data_L.fillna(method="bfill")
-    data_R.iloc[:,:] = data_R.fillna(method="bfill")
+    data_L.iloc[:, :] = data_L.interpolate(method="linear")
+    data_R.iloc[:, :] = data_R.interpolate(method="linear")
+    data_L.iloc[:, :] = data_L.fillna(method="bfill")
+    data_R.iloc[:, :] = data_R.fillna(method="bfill")
     return data_L, data_R
 
 
@@ -71,8 +71,10 @@ def remove_offset(data_L, data_R, remove=True):
     if remove:
         columns = data_L.columns[3:-3]  # Choose Forces and Moments
         for col in columns:
-            data_L.loc[:, col] = data_L.loc[:, col] - data_L.loc[5:60, col].mean()
-            data_R.loc[:, col] = data_R.loc[:, col] - data_R.loc[5:60, col].mean()
+            data_L.loc[:, col] = data_L.loc[:, col] - \
+                data_L.loc[5:60, col].mean()
+            data_R.loc[:, col] = data_R.loc[:, col] - \
+                data_R.loc[5:60, col].mean()
     return data_L, data_R
 
 
@@ -137,8 +139,7 @@ def filter_COP(data, side=None):
                                                 p1=data.loc[i, 'Z1'],
                                                 p2=data.loc[i, 'Z2'])
 
-        # Remaining is quite meanless since it won't affect calculations.
-        # but it will affect COP visualizing
+        # Remaining will affect COP visualizing
         # Check if COP is out side FP, of course in this case subject not in FP
         # if Cop outside in one direction, make it equal to the point behind.
         else:
