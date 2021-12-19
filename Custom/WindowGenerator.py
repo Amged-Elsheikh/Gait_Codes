@@ -154,6 +154,20 @@ class WindowGenerator:
             test_ds, batch_size=16000, shuffle=False, remove_nan=False)
         return test_ds
 
+    def get_gm_train_val_dataset(self):
+        trail_01 = self.prepare_sides(self.train_01_df)
+        trail_02 = self.prepare_sides(self.train_02_df)
+        val_ds = self.prepare_sides(self.val_df)
+        test_ds = self.prepare_sides(self.test_df)
+        # stack trails datasets
+        # Add validation set to the training set and use test set for validation
+        train_ds = trail_01.concatenate(trail_02)
+        train_ds = train_ds.concatenate(test_ds)
+        # Split window data to input and output and store results
+        train_ds = train_ds.map(self.split_window)
+        val_ds = val_ds.map(self.split_window)
+        return train_ds, val_ds
+
     def preprocessing(self, ds, batch_size=None, shuffle=False, remove_nan=True, drop_reminder=False):
         ds = ds.unbatch()
         if remove_nan:
