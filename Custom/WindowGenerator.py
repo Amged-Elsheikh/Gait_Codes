@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 
@@ -42,10 +41,11 @@ class WindowGenerator:
         if self.add_knee:
             left_side_col.append("Left knee angle")
             right_side_col.append("Right knee angle")
-        self.features_num = len(left_side_col) # used for input layer
+        self.features_num = len(left_side_col)  # used for input layer
 
         left_side_col.extend(list(map(lambda x: f"Left {x}", self.out_labels)))
-        right_side_col.extend(list(map(lambda x: f"Right {x}", self.out_labels)))
+        right_side_col.extend(
+            list(map(lambda x: f"Right {x}", self.out_labels)))
         self.left_side_col = left_side_col
         self.right_side_col = right_side_col
 
@@ -87,7 +87,8 @@ class WindowGenerator:
 
     def split_window(self, features):
         # Take all EMG features and knee angle column
-        inputs = features[:, self.input_slice, :-self.out_nums] #[Batch_size, timestep, features/labels]
+        # [Batch_size, timestep, features/labels]
+        inputs = features[:, self.input_slice, :-self.out_nums]
         # Predict ankle angle & torque
         labels = features[:, self.labels_slice, -self.out_nums:]
 
@@ -167,6 +168,12 @@ class WindowGenerator:
         ds = ds.batch(batch_size, drop_remainder=drop_reminder)
         ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
         return ds
+
+    def make_dataset(self):
+        train_set = self.get_train_dataset()
+        val_set = self.get_val_dataset()
+        test_set = self.get_evaluation_set()
+        return train_set, val_set, test_set
 
     def __repr__(self):
         return '\n'.join([
