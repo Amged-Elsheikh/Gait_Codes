@@ -152,12 +152,11 @@ def plot_learning_curve(history, folder):
         return None
 
 
-def plot_results(window_object, y_true, y_pred, R2_score, rmse_result, folder):
+def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, folder):
     time = [i / 20 for i in range(len(y_true))]
     plt.figure("Prediction")
-    labels = window_object.out_labels
-    for i, col in enumerate(list(labels)):
-        plt.subplot(len(labels), 1, i + 1)
+    for i, col in enumerate(list(out_labels)):
+        plt.subplot(len(out_labels), 1, i + 1)
         print(f"{col} R2 score: {R2_score[i]}")
         print(f"{col} RMSE result: {rmse_result[i]}")
         plt.plot(time, y_true[:, i], linewidth=2.5)
@@ -174,8 +173,8 @@ def plot_results(window_object, y_true, y_pred, R2_score, rmse_result, folder):
         else:
             plt.ylabel("Angle [Degree]")
     plt.tight_layout()
-    plt.savefig(f"{folder}{labels[i]}.svg")
-    plt.savefig(f"{folder}{labels[i]}.pdf")
+    plt.savefig(f"{folder}{out_labels[i]}.svg")
+    plt.savefig(f"{folder}{out_labels[i]}.pdf")
     plt.draw()
     plt.close()
 
