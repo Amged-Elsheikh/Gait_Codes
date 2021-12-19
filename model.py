@@ -10,77 +10,13 @@ import json
 from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow_models import *
+from models_functions import *
 K = keras.backend
 # import os
 # os.environ["MKL_THREADING_LAYER"] = "GNU"
 # os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 
 # mpl.rcParams['figure.dpi'] = 110
-
-
-# Scaling function
-
-def scale_function(data, weight, features_scaler, angle_scaler):
-    """This function will scale the dataset, if you do not want to scale something, set it's value to None.
-
-    Args:
-        data ([pandas dataframe]): [The data columns are arranged as fellow: EMG features, angles and moments]
-        weight ([float or None]): [subject weight. If None, no scale will be performed.]
-        features_scaler ([sci-kit learn scaler]): [Scale the features. Use MinMax scaler. If None, no scale will be performed.]
-        angle_scaler ([sci-kit learn scaler]): [Scale the angles. Use MinMax scaler. If None, no scale will be performed.]
-    """
-    # Scale moments
-    if weight:
-        data.iloc[:, -4:] = data.iloc[:, -4:]/weight
-    # Scale features
-    if features_scaler:
-        data.iloc[:, :-8] = features_scaler.transform(data.iloc[:, :-8])
-    # Scale angles
-    if angle_scaler:
-        columns = data.columns[-8:-4]
-        data[columns] = angle_scaler.transform(data[columns])
-    return
-
-
-def plot_results(window_object, y_true, y_pred, R2_score, rmse_result, folder):
-    time = [i/20 for i in range(len(y_true))]
-    plt.figure("Prediction")
-    labels = window_object.out_labels
-    for i, col in enumerate(list(labels)):
-        plt.subplot(len(labels), 1, i+1)
-        print(f"{col} R2 score: {R2_score[i]}")
-        print(f"{col} RMSE result: {rmse_result[i]}")
-        plt.plot(time, y_true[:, i], linewidth=2.5)
-        plt.plot(time, y_pred[:, i], "r--", linewidth=2.5,)
-        plt.title(col)
-        if i == 0:
-            plt.legend(["y_true", "y_pred"], loc='lower left')
-        plt.xlim((time[-600], time[-100]))
-        plt.xlabel("Time [s]")
-        if "moment" in col:
-            plt.ylabel("Moment [Nm]")
-        else:
-            plt.ylabel("Angle [Degree]")
-    plt.tight_layout()
-    plt.savefig(f"{folder}{labels[i]}.svg")
-    plt.savefig(f"{folder}{labels[i]}.pdf")
-    plt.draw()
-    plt.close()
-
-
-def choose_features(data, features=["RMS"]):
-    new_columns = []
-    for col in data.columns:
-        if "DEMG" in col:  # Confirm the column is a feature column
-            for feature in features:
-                if feature.lower() in col.lower():
-                    new_columns.append(col)
-                    continue
-        else:  # append all labels
-            new_columns.append(col)
-    return data[new_columns]
-
 
 def create_window_generator(subject=None):
     if subject == None:
