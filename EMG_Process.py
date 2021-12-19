@@ -17,10 +17,11 @@ import json
 pd.set_option('display.max_columns', None)
 plt.rcParams["figure.figsize"] = [14, 10]
 
-with open("subject_details.json","r") as f:
-    subject_details = json.load(f)
+with open("subject_details.json", "r") as file:
+    subject_details = json.load(file)
 
-sensors_num = 6
+sensors_num = 6  # Very important for loading the data
+
 
 def get_emg_files(subject, outputs_path):
     # Get inputs names
@@ -28,7 +29,8 @@ def get_emg_files(subject, outputs_path):
     # add path, subject number and file extension
     inputs_names = list(map(lambda x: f"S{subject}_{x}_EMG.csv", trials))
     # Get outputs names
-    output_files = list(map(lambda x: f"{outputs_path}{x}_features.csv", trials))
+    output_files = list(
+        map(lambda x: f"{outputs_path}{x}_features.csv", trials))
     output_files = list(
         map(lambda x: x.replace("_EMG", "_features"), output_files))
     return inputs_names, output_files
@@ -44,7 +46,7 @@ def load_emg_data(inputs_path, emg_file):
 
 
 def apply_notch_filter(data):
-    fs = 1/0.0009  # sampling frequancy in Hz 
+    fs = 1/0.0009  # sampling frequancy in Hz
     f0 = 50  # Notched frequancy
     Q = 30  # Quality factor
     b, a = signal.iirnotch(f0, Q, fs)
@@ -89,9 +91,10 @@ def plot_all_emg(emg, file_name=None):
         plt.subplot(n, m, i+1)
         plt.plot(emg.index, emg.iloc[:, 2*i], emg.index, emg.iloc[:, 2*i+1])
         plt.title(muscles[i])
-        plt.xlim((emg.index[0],emg.index[-1]+0.01))
+        plt.xlim((emg.index[0], emg.index[-1]+0.01))
     plt.xlabel("Time [s]")
     plt.suptitle(file_name)
+    plt.tight_layout()
     plt.draw()
 
 # Features Functions
@@ -126,7 +129,7 @@ def get_features(DEMG):
     dataset = pd.DataFrame()
     time_limit = max(DEMG.index)
     print(f"time_limit: {time_limit}s")
-    for EMG_num in range(1,len(DEMG.columns)+1):
+    for EMG_num in range(1, len(DEMG.columns)+1):
         start = 0
         end = 0.250
         coeff = []
@@ -195,6 +198,6 @@ def emg_to_features(subject=None, remove_artifacts=True):
         # Plot data
         plot_RMS(dataset, emg_file)
 
-for s in ["01","02","04"]:
-    emg_to_features(subject = s, remove_artifacts=True)
-    plt.show()
+
+emg_to_features(remove_artifacts=True)
+plt.show()
