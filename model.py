@@ -31,7 +31,7 @@ def create_window_generator(subject=None):
     trials = ["train_01", "train_02", "val", "test"]
     trials = list(map(lambda x: f"../Dataset/S{subject}/{x}_dataset.csv", trials))
     # #Load data
-    train_01_df = (pd.read_csv(trials[0], index_col="time"),)
+    train_01_df = pd.read_csv(trials[0], index_col="time")
     train_02_df = pd.read_csv(trials[1], index_col="time")
     val_df = pd.read_csv(trials[2], index_col="time")
     test_df = pd.read_csv(trials[3], index_col="time")
@@ -43,7 +43,7 @@ def create_window_generator(subject=None):
     # #Scale the dataset
     for data in [train_01_df, train_02_df, val_df, test_df]:
         data = scale_function(
-            data, weights=w, features_scaler=features_scaler, angle_scaler=angle_scaler
+            data, weight=w, features_scaler=features_scaler, angle_scaler=angle_scaler
         )
 
     train_01_df = choose_features(train_01_df, features=features)
