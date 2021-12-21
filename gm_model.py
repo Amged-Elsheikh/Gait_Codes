@@ -9,6 +9,10 @@ from Custom.models_functions import *
 from Custom.WindowGenerator import WindowGenerator
 from tensorflow.keras import backend as K
 
+gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
+gpu_index = 0
+tf.config.experimental.set_visible_devices(devices=gpus[gpu_index], device_type="GPU")
+
 
 def create_window_generator(subject=None):
     if subject == None:
@@ -69,8 +73,7 @@ def train_fit_gm(
     subject: List the subjects used for training.
     tested on: subject number in XX string format.
     """
-    # setup model folder
-    global folder
+    # setup results and models folder
     folder = f"../Results/GM/{model_name}/S{test_subject}/"
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -81,18 +84,31 @@ def train_fit_gm(
     # Get all dataset
     train_set_1, val_set_1 = window_object_1.get_gm_train_val_dataset()
     train_set_2, val_set_2 = window_object_2.get_gm_train_val_dataset()
-    train_set = window_object_1.preprocessing(train_set_1.concatenate(train_set_2))
-    val_set = window_object_1.preprocessing(val_set_1.concatenate(val_set_2))
+    train_set = window_object_1.preprocessing(
+        train_set_1.concatenate(train_set_2),
+        remove_nan=True,
+        shuffle=True,
+        batch_size=None,
+        drop_reminder=True,
+    )
+
+    val_set = window_object_1.preprocessing(
+        val_set_1.concatenate(val_set_2),
+        remove_nan=True,
+        shuffle=False,
+        batch_size=None,
+        drop_reminder=False,
+    )
 
     ##############################################################################################################
     # Load and compile new model
     K.clear_session()
     model = model_dic[model_name](window_object_1)
     model.compile(
-        optimizer=keras.optimizers.Nadam(learning_rate=lr), loss="mean_squared_error"
+        optimizer=keras.optimizers.Nadam(learning_rate=lr), loss=SPLoss(loss_factor)
     )
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=f"{folder}S{test_subject}_{model_name}.hdf5",
+        filepath=model_file,
         save_weights_only=True,
         monitor="val_loss",
         save_best_only=True,
@@ -153,9 +169,11 @@ if __name__ == "__main__":
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
 
+    subjects = ["01", "02", "04"]
     features = ["RMS", "ZC"]
     add_knee = False
     out_labels = ["ankle moment"]
+    loss_factor = 5.0
     # model_name = "nn_model"
 
     model_dic = {}
@@ -164,13 +182,18 @@ if __name__ == "__main__":
     model_dic["conv_model"] = create_conv_model
     model_dic["nn_model"] = create_nn_model
 
-for model_name in model_dic.keys():
-    history, y_true, y_pred, r2, rmse = train_fit_gm(
-        subject=["01", "02"],
-        test_subject="04",
-        model_name=model_name,
-        epochs=1000,
-        eval_only=False,
-        load_best=False,
-    )
-    print(model_name)
+for test_subject in subjects:
+    train_subjects = subjects.copy()
+    train_subjects.remove(test_subject)
+
+    for model_name in model_dic.keys():
+        history, y_true, y_pred, r2, rmse = train_fit_gm(
+            subject=train_subjects,
+            test_subject=test_subject,
+            model_name=model_name,
+            epochs=1000,
+            eval_only=False,
+            load_best=False,
+        )
+        plt.close()
+        print(model_name)
