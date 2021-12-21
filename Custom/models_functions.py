@@ -121,7 +121,7 @@ def nan_rmse(y_true, y_pred):
         y_true_col = y_true_col[logic]
         y_pred_col = y_pred_col[logic]
         rmse.append(mse(y_true_col, y_pred_col))
-    return np.around(rmse, 2)
+    return np.around(rmse, 3)
 
 
 def custom_loss(y_true, y_pred):
@@ -144,14 +144,13 @@ class SPLoss(losses.Loss):  # Slip Prevention Loss
 
     def get_config(self):
         base_config = super().get_config()
-        return {**base_config, "threshold":self.threshold}
+        return {**base_config, "threshold": self.threshold}
 
 
 # #Plotting functions
 def plot_learning_curve(history, folder):
     if history == None:
         print("No train history was found")
-        return None
     else:
         plt.figure("Learning curve")
         plt.plot(
@@ -165,8 +164,6 @@ def plot_learning_curve(history, folder):
         plt.ylabel("loss")
         plt.draw()
         plt.savefig(f"{folder}learning_curve.pdf")
-        plt.close()
-        return None
 
 
 def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, folder):
@@ -193,5 +190,3 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, folder):
     plt.savefig(f"{folder}{out_labels[i]}.svg")
     plt.savefig(f"{folder}{out_labels[i]}.pdf")
     plt.draw()
-    plt.close()
-
