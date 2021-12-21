@@ -154,7 +154,6 @@ class WindowGenerator:
         ds = ds.unbatch()
         if remove_nan:
 
-            @tf.function
             def filter_nan(_, y):
                 return not tf.reduce_any(tf.math.is_nan(y))
 
@@ -184,7 +183,7 @@ class WindowGenerator:
         train_ds = train_ds.map(self.split_window)
         # Shufffle the train dataset
         train_ds = self.preprocessing(
-            train_ds, shuffle=True, drop_reminder=True, remove_nan=False
+            train_ds, shuffle=True, drop_reminder=True, remove_nan=True
         )
         return train_ds
 
