@@ -1,11 +1,8 @@
 # import matplotlib as mpl
 from Custom.WindowGenerator import WindowGenerator
-from functools import partial
-from sklearn import metrics
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
-import numpy as np
 import json
 from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
@@ -13,11 +10,12 @@ from tensorflow import keras
 from Custom.models_functions import *
 
 K = keras.backend
-# import os
-# os.environ["MKL_THREADING_LAYER"] = "GNU"
-# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+gpu_index = -1
+tf.config.experimental.set_visible_devices(devices=gpus[gpu_index], device_type='GPU')
+# tf.config.experimental.set_virtual_device_configuration(gpus[gpu_index], \
+# [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)])
 
-# mpl.rcParams['figure.dpi'] = 110
 
 
 def create_window_generator(subject=None):
@@ -56,8 +54,8 @@ def create_window_generator(subject=None):
         train_02_df,
         val_df,
         test_df,
-        input_width=15,
-        shift=3,
+        input_width=20,
+        shift=4,
         label_width=1,
         batch_size=64,
         add_knee=add_knee,
@@ -69,11 +67,11 @@ def create_window_generator(subject=None):
 def train_fit(
     subject, tested_on, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False
 ):
-    # setup model folder
-    global folder
+    # setup results and models folder
     folder = f"../Results/indiviuals/{model_name}/S{subject}/"
     if not os.path.exists(folder):
         os.makedirs(folder)
+    model_file = f"{folder}S{subject}_{model_name}.hdf5"
 
     window_object = create_window_generator(subject)
     if tested_on == None:
@@ -87,10 +85,10 @@ def train_fit(
     K.clear_session()
     model = model_dic[model_name](window_object)
     model.compile(
-        optimizer=keras.optimizers.Nadam(learning_rate=lr), loss="mean_squared_error"
+        optimizer=keras.optimizers.Nadam(learning_rate=lr), loss=SPLoss(loss_factor)
     )
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=f"{folder}S{subject}_{model_name}.hdf5",
+        filepath=model_file,
         save_weights_only=True,
         monitor="val_loss",
         save_best_only=True,
@@ -98,7 +96,7 @@ def train_fit(
 
     if load_best:
         try:
-            model.load_weights(f"{folder}/S{subject}_{model_name}.hdf5")
+            model.load_weights(model_file)
         except:
             print("No saved model existing. weights will be initialized")
     ##############################################################################################################
@@ -113,10 +111,10 @@ def train_fit(
             )
             plot_learning_curve(history, folder)
             # Load the best model
-            model.load_weights(f"{folder}/S{subject}_{model_name}.hdf5")
+            model.load_weights(model_file)
         else:
             history = "No training was conducted"
-            model.load_weights(f"{folder}/S{subject}_{model_name}.hdf5")
+            model.load_weights(model_file)
     except KeyboardInterrupt:
         history = "\n\nTrains stopped manually"
         print(history)
@@ -138,6 +136,7 @@ def train_fit(
     ################ Evaluation and plot ################
     r2_score = nan_R2(y_true, y_pred)
     rmse_result = nan_rmse(y_true, y_pred)
+    # Change the folder to the test subject folder after loading the model
     folder = f"../Results/indiviuals/{model_name}/S{tested_on}/"
     plot_results(y_true, y_pred, out_labels, r2_score, rmse_result, folder)
     plt.draw()
@@ -155,6 +154,7 @@ if __name__ == "__main__":
     add_knee = False
     out_labels = ["ankle moment"]
     model_name = "nn_model"
+    loss_factor = 5.0
 
     model_dic = {}
 
@@ -170,11 +170,11 @@ if __name__ == "__main__":
     for model_name in model_dic.keys():
         history, y_true, y_pred, r2, rmse = train_fit(
             subject="02",
-            tested_on="04",
+            tested_on=None,
             model_name=model_name,
             epochs=1000,
-            eval_only=True,
-            load_best=True,
+            eval_only=False,
+            load_best=False,
         )
         print(model_name)
-        # plt.show()
+    plt.show()
