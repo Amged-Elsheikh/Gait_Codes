@@ -1,16 +1,14 @@
 import json
 import os
 import pandas as pd
-import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 from tensorflow import keras
 from Custom.models_functions import *
 from Custom.WindowGenerator import WindowGenerator
-from tensorflow.keras import backend as K
 
 gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
-gpu_index = 0
+gpu_index = len(gpus)-1
 tf.config.experimental.set_visible_devices(devices=gpus[gpu_index], device_type="GPU")
 
 
@@ -73,11 +71,12 @@ def train_fit_gm(
     subject: List the subjects used for training.
     tested on: subject number in XX string format.
     """
-    # setup results and models folder
+    # #Create Results and model folder
     folder = f"../Results/GM/{model_name}/S{test_subject}/"
     if not os.path.exists(folder):
         os.makedirs(folder)
     model_file = f"{folder}S{test_subject}_{model_name}.hdf5"
+    # Make dataset
     # #FOR NOW I HAVE 2 SUBJECTS FOR TRAINING, I'LL GENERALIZE THE CODE TO ACCEPT MORE SUBJECTS LATER
     window_object_1 = create_window_generator(subject[0])
     window_object_2 = create_window_generator(subject[1])
@@ -102,12 +101,12 @@ def train_fit_gm(
 
     ##############################################################################################################
     # Load and compile new model
-    K.clear_session()
+    keras.backend.clear_session()
     model = model_dic[model_name](window_object_1)
     model.compile(
         optimizer=keras.optimizers.Nadam(learning_rate=lr), loss=SPLoss(loss_factor)
     )
-    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+    model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
         filepath=model_file,
         save_weights_only=True,
         monitor="val_loss",
@@ -130,17 +129,16 @@ def train_fit_gm(
                 callbacks=[model_checkpoint_callback],
             )
             plot_learning_curve(history, folder)
-            # Load the best model
-            model.load_weights(model_file)
         else:
             history = "No training was conducted"
-            model.load_weights(model_file)
     except KeyboardInterrupt:
         history = "\n\nTrains stopped manually"
         print(history)
     except OSError:  # If no saved model to be evaluated exist
         print("No saved model existing. weights will be initialized")
     ##############################################################################################################
+    # Load the best model. Evaluation will always be with best model
+    model.load_weights(model_file)
     # Get predictions and real values
     test_window = create_window_generator(test_subject)
     w = subject_details[f"S{test_subject}"]["weight"]
@@ -175,13 +173,14 @@ if __name__ == "__main__":
     out_labels = ["ankle moment"]
     loss_factor = 5.0
     # model_name = "nn_model"
-
     model_dic = {}
 
     model_dic["lstm_model"] = create_lstm_model
     model_dic["conv_model"] = create_conv_model
     model_dic["nn_model"] = create_nn_model
-
+# Create pandas dataframe that will have all the results
+r2_results = pd.DataFrame(columns=model_dic.keys())
+rmse_results = pd.DataFrame(columns=model_dic.keys())
 for test_subject in subjects:
     train_subjects = subjects.copy()
     train_subjects.remove(test_subject)
@@ -191,9 +190,14 @@ for test_subject in subjects:
             subject=train_subjects,
             test_subject=test_subject,
             model_name=model_name,
-            epochs=1000,
-            eval_only=False,
-            load_best=False,
+            epochs=2,
+            eval_only=True,
+            load_best=True,
         )
+        # print(model_name)
+        # print(test_subject)
+        r2_results.loc[f"S{test_subject}", model_name] = r2[0]
+        rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
         plt.close()
-        print(model_name)
+r2_results.to_csv("../Results/GM/R2_results.csv")
+rmse_results.to_csv("../Results/GM/RMSE_results.csv")
