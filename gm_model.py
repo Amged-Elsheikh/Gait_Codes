@@ -2,11 +2,9 @@ import json
 import os
 from functools import partial
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 from tensorflow import keras
 from Custom.models_functions import *
-from Custom.WindowGenerator import WindowGenerator
 
 gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
 gpu_index = len(gpus) - 1
@@ -129,13 +127,13 @@ if __name__ == "__main__":
     features = ["RMS", "ZC"]  # Used EMG features
     add_knee = False  # True if you want to use knee angle as an extra input
     out_labels = ["ankle moment"]  # Labels to be predicted
-    loss_factor = 5.0  # Loss factor to prevent ankle slip
+    loss_factor = 3.0  # Loss factor to prevent ankle slip
     # Window object parameters
-    input_width = 20
+    input_width = 15
     shift = 3
     label_width = 1
     batch_size = 64
-    
+
     window_generator = partial(create_window_generator, input_width=input_width, shift=shift, label_width=label_width,
                                batch_size=batch_size, features=features, add_knee=add_knee, out_labels=out_labels)
     # model_name = "nn_model"
