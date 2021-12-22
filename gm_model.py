@@ -1,5 +1,6 @@
 import json
 import os
+from functools import partial
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
@@ -8,54 +9,9 @@ from Custom.models_functions import *
 from Custom.WindowGenerator import WindowGenerator
 
 gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
-gpu_index = len(gpus)-1
-tf.config.experimental.set_visible_devices(devices=gpus[gpu_index], device_type="GPU")
-
-
-def create_window_generator(subject=None):
-    if subject == None:
-        subject = input("Please input subject number in XX format: ")
-    if len(subject) == 1:
-        subject = "0" + subject
-    # #Get subject weight.
-    w = subject_details[f"S{subject}"]["weight"]
-    # #Get trials directory
-    trials = ["train_01", "train_02", "val", "test"]
-    trials = list(map(lambda x: f"../Dataset/S{subject}/{x}_dataset.csv", trials))
-    # #Load data
-    train_01_df = pd.read_csv(trials[0], index_col="time")
-    train_02_df = pd.read_csv(trials[1], index_col="time")
-    val_df = pd.read_csv(trials[2], index_col="time")
-    test_df = pd.read_csv(trials[3], index_col="time")
-    # #Prepare scalers
-    features_scaler = MinMaxScaler(feature_range=(0, 1))
-    features_scaler.fit(train_01_df.iloc[:400, :-8])
-    angle_scaler = MinMaxScaler(feature_range=(0, 1))
-    angle_scaler.fit(train_01_df.iloc[:400, -8:-4])
-    # #Scale the dataset
-    for data in [train_01_df, train_02_df, val_df, test_df]:
-        data = scale_function(
-            data, weight=w, features_scaler=features_scaler, angle_scaler=angle_scaler
-        )
-
-    train_01_df = choose_features(train_01_df, features=features)
-    train_02_df = choose_features(train_02_df, features=features)
-    val_df = choose_features(val_df, features=features)
-    test_df = choose_features(test_df, features=features)
-    # #Create Window object
-    window_object = WindowGenerator(
-        train_01_df,
-        train_02_df,
-        val_df,
-        test_df,
-        input_width=15,
-        shift=3,
-        label_width=1,
-        batch_size=64,
-        add_knee=add_knee,
-        out_labels=out_labels,
-    )
-    return window_object
+gpu_index = len(gpus) - 1
+tf.config.experimental.set_visible_devices(
+    devices=gpus[gpu_index], device_type="GPU")
 
 
 def train_fit_gm(
@@ -78,8 +34,8 @@ def train_fit_gm(
     model_file = f"{folder}S{test_subject}_{model_name}.hdf5"
     # Make dataset
     # #FOR NOW I HAVE 2 SUBJECTS FOR TRAINING, I'LL GENERALIZE THE CODE TO ACCEPT MORE SUBJECTS LATER
-    window_object_1 = create_window_generator(subject[0])
-    window_object_2 = create_window_generator(subject[1])
+    window_object_1 = window_generator(subject[0])
+    window_object_2 = window_generator(subject[1])
     # Get all dataset
     train_set_1, val_set_1 = window_object_1.get_gm_train_val_dataset()
     train_set_2, val_set_2 = window_object_2.get_gm_train_val_dataset()
@@ -140,7 +96,7 @@ def train_fit_gm(
     # Load the best model. Evaluation will always be with best model
     model.load_weights(model_file)
     # Get predictions and real values
-    test_window = create_window_generator(test_subject)
+    test_window = window_generator(test_subject)
     w = subject_details[f"S{test_subject}"]["weight"]
     test_set = test_window.get_evaluation_set()
     y_pred = model.predict(test_set)
@@ -161,43 +117,55 @@ def train_fit_gm(
 
 
 if __name__ == "__main__":
+    # Check for GPU
     if not tf.test.is_built_with_cuda():
         raise print("No GPU found")
-
+    # Get all subjects details
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
-
+    # get subjects
     subjects = ["01", "02", "04"]
-    features = ["RMS", "ZC"]
-    add_knee = False
-    out_labels = ["ankle moment"]
-    loss_factor = 5.0
+    # Choose features and labels
+    features = ["RMS", "ZC"]  # Used EMG features
+    add_knee = False  # True if you want to use knee angle as an extra input
+    out_labels = ["ankle moment"]  # Labels to be predicted
+    loss_factor = 5.0  # Loss factor to prevent ankle slip
+    # Window object parameters
+    input_width = 20
+    shift = 3
+    label_width = 1
+    batch_size = 64
+    
+    window_generator = partial(create_window_generator, input_width=input_width, shift=shift, label_width=label_width,
+                               batch_size=batch_size, features=features, add_knee=add_knee, out_labels=out_labels)
     # model_name = "nn_model"
     model_dic = {}
 
-    model_dic["lstm_model"] = create_lstm_model
+    model_dic["lstm_model"] = create_lstm_gm_model
+    model_dic["single_lstm_model"] = create_single_lstm_model
     model_dic["conv_model"] = create_conv_model
-    model_dic["nn_model"] = create_nn_model
-# Create pandas dataframe that will have all the results
-r2_results = pd.DataFrame(columns=model_dic.keys())
-rmse_results = pd.DataFrame(columns=model_dic.keys())
-for test_subject in subjects:
-    train_subjects = subjects.copy()
-    train_subjects.remove(test_subject)
+    model_dic["nn_model"] = create_nn_gm_model
+    # Create pandas dataframe that will have all the results
+    r2_results = pd.DataFrame(columns=model_dic.keys())
+    rmse_results = pd.DataFrame(columns=model_dic.keys())
+    for test_subject in subjects:
+        train_subjects = subjects.copy()
+        train_subjects.remove(test_subject)
 
-    for model_name in model_dic.keys():
-        history, y_true, y_pred, r2, rmse = train_fit_gm(
-            subject=train_subjects,
-            test_subject=test_subject,
-            model_name=model_name,
-            epochs=2,
-            eval_only=True,
-            load_best=True,
-        )
-        # print(model_name)
-        # print(test_subject)
-        r2_results.loc[f"S{test_subject}", model_name] = r2[0]
-        rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
-        plt.close()
-r2_results.to_csv("../Results/GM/R2_results.csv")
-rmse_results.to_csv("../Results/GM/RMSE_results.csv")
+        for model_name in model_dic.keys():
+            history, y_true, y_pred, r2, rmse = train_fit_gm(
+                subject=train_subjects,
+                test_subject=test_subject,
+                model_name=model_name,
+                epochs=2000,
+                eval_only=True,
+                load_best=False,
+            )
+            # print(model_name)
+            # print(test_subject)
+            r2_results.loc[f"S{test_subject}", model_name] = r2[0]
+            rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
+            plt.close()
+
+    r2_results.to_csv("../Results/GM/R2_results.csv")
+    rmse_results.to_csv("../Results/GM/RMSE_results.csv")

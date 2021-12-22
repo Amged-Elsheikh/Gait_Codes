@@ -18,53 +18,6 @@ tf.config.experimental.set_visible_devices(
 # [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)])
 
 
-def create_window_generator(subject=None):
-    if subject == None:
-        subject = input("Please input subject number in XX format: ")
-    if len(subject) == 1:
-        subject = "0" + subject
-    # #Get subject weight.
-    w = subject_details[f"S{subject}"]["weight"]
-    # #Get trials directory
-    trials = ["train_01", "train_02", "val", "test"]
-    trials = list(
-        map(lambda x: f"../Dataset/S{subject}/{x}_dataset.csv", trials))
-    # #Load data
-    train_01_df = pd.read_csv(trials[0], index_col="time")
-    train_02_df = pd.read_csv(trials[1], index_col="time")
-    val_df = pd.read_csv(trials[2], index_col="time")
-    test_df = pd.read_csv(trials[3], index_col="time")
-    # #Prepare scalers
-    features_scaler = MinMaxScaler(feature_range=(0, 1))
-    features_scaler.fit(train_01_df.iloc[:400, :-8])
-    angle_scaler = MinMaxScaler(feature_range=(0, 1))
-    angle_scaler.fit(train_01_df.iloc[:400, -8:-4])
-    # #Scale the dataset
-    for data in [train_01_df, train_02_df, val_df, test_df]:
-        data = scale_function(
-            data, weight=w, features_scaler=features_scaler, angle_scaler=angle_scaler
-        )
-
-    train_01_df = choose_features(train_01_df, features=features)
-    train_02_df = choose_features(train_02_df, features=features)
-    val_df = choose_features(val_df, features=features)
-    test_df = choose_features(test_df, features=features)
-    # #Create Window object
-    window_object = WindowGenerator(
-        train_01_df,
-        train_02_df,
-        val_df,
-        test_df,
-        input_width=20,
-        shift=4,
-        label_width=1,
-        batch_size=64,
-        add_knee=add_knee,
-        out_labels=out_labels,
-    )
-    return window_object
-
-
 def train_fit(
     subject, tested_on, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False
 ):
@@ -74,7 +27,7 @@ def train_fit(
         os.makedirs(folder)
     model_file = f"{folder}S{subject}_{model_name}.hdf5"
 
-    window_object = create_window_generator(subject)
+    window_object = window_generator(subject)
     if tested_on == None:
         tested_on = subject
 
@@ -123,7 +76,7 @@ def train_fit(
         print("No saved model existing. weights will be initialized")
     ##############################################################################################################
     # Get predictions and real values
-    window_object = create_window_generator(tested_on)
+    window_object = window_generator(tested_on)
     _, _, test_set = window_object.make_dataset()
     y_pred = model.predict(test_set)
     if len(y_pred.shape) == 3:
@@ -151,11 +104,19 @@ if __name__ == "__main__":
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
 
-    features = ["RMS", "ZC"]
-    add_knee = False
-    out_labels = ["ankle moment"]
-    model_name = "nn_model"
-    loss_factor = 5.0
+    # Choose features and labels
+    features = ["RMS", "ZC"]  # Used EMG features
+    add_knee = False  # True if you want to use knee angle as an extra input
+    out_labels = ["ankle moment"]  # Labels to be predicted
+    loss_factor = 5.0  # Loss factor to prevent ankle slip
+    # Window object parameters
+    input_width = 20
+    shift = 3
+    label_width = 1
+    batch_size = 64
+
+    window_generator = partial(create_window_generator, input_width=input_width, shift=shift, label_width=label_width,
+                               batch_size=batch_size, features=features, add_knee=add_knee, out_labels=out_labels)
 
     model_dic = {}
 
@@ -163,9 +124,9 @@ if __name__ == "__main__":
     model_dic["conv_model"] = create_conv_model
     model_dic["nn_model"] = create_nn_model
 
-    # w1 = create_window_generator(subject="1")
-    # w2 = create_window_generator(subject="2")
-    # w4 = create_window_generator(subject="4")
+    # w1 = window_generator(subject="1")
+    # w2 = window_generator(subject="2")
+    # w4 = window_generator(subject="4")
 
     # Train and test new/existing models
     for model_name in model_dic.keys():

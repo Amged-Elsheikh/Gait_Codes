@@ -1,7 +1,11 @@
+import json
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import metrics
 from functools import partial
+from WindowGenerator import WindowGenerator
 import tensorflow as tf
 from tensorflow.keras import layers, models, losses
 
@@ -10,6 +14,11 @@ This python file will contains custm function for preparing models, tf models, c
 """
 
 # # Data preparation
+
+with open("subject_details.json", "r") as f:
+    subject_details = json.load(f)
+
+
 def scale_function(data, weight, features_scaler, angle_scaler):
     """This function will scale the dataset, if you do not want to scale something, set it's value to None.
 
@@ -44,6 +53,57 @@ def choose_features(data, features=["RMS"]):
             new_columns.append(col)
     return data[new_columns]
 
+# # Window generator creation function
+
+
+def create_window_generator(
+    subject=None, input_width=20, shift=3, label_width=1, batch_size=64, features=["RMS"], add_knee=False, out_labels=["ankle moment"]
+):
+    if subject == None:
+        subject = input("Please input subject number in XX format: ")
+    if len(subject) == 1:
+        subject = "0" + subject
+    # #Get subject weight.
+    w = subject_details[f"S{subject}"]["weight"]
+    # #Get trials directory
+    trials = ["train_01", "train_02", "val", "test"]
+    trials = list(
+        map(lambda x: f"../Dataset/S{subject}/{x}_dataset.csv", trials))
+    # #Load data
+    train_01_df = pd.read_csv(trials[0], index_col="time")
+    train_02_df = pd.read_csv(trials[1], index_col="time")
+    val_df = pd.read_csv(trials[2], index_col="time")
+    test_df = pd.read_csv(trials[3], index_col="time")
+    # #Prepare scalers
+    features_scaler = MinMaxScaler(feature_range=(0, 1))
+    features_scaler.fit(train_01_df.iloc[:400, :-8])
+    angle_scaler = MinMaxScaler(feature_range=(0, 1))
+    angle_scaler.fit(train_01_df.iloc[:400, -8:-4])
+    # #Scale the dataset
+    for data in [train_01_df, train_02_df, val_df, test_df]:
+        data = scale_function(
+            data, weight=w, features_scaler=features_scaler, angle_scaler=angle_scaler
+        )
+
+    train_01_df = choose_features(train_01_df, features=features)
+    train_02_df = choose_features(train_02_df, features=features)
+    val_df = choose_features(val_df, features=features)
+    test_df = choose_features(test_df, features=features)
+    # #Create Window object
+    window_object = WindowGenerator(
+        train_01_df,
+        train_02_df,
+        val_df,
+        test_df,
+        input_width=input_width,
+        shift=shift,
+        label_width=label_width,
+        batch_size=batch_size,
+        add_knee=add_knee,
+        out_labels=out_labels,
+    )
+    return window_object
+
 
 # #models
 def create_lstm_model(window_object):
@@ -52,13 +112,53 @@ def create_lstm_model(window_object):
     custom_LSTM = partial(layers.LSTM, dropout=0.3,)
     lstm_model = models.Sequential(
         [
-            layers.InputLayer((window_object.input_width, window_object.features_num)),
+            layers.InputLayer((window_object.input_width,
+                              window_object.features_num)),
             # layers.BatchNormalization(),
             # custom_LSTM(4, return_sequences=True),
             custom_LSTM(4, return_sequences=True),
             custom_LSTM(4, return_sequences=False),
             layers.Dense(window_object.out_nums * window_object.label_width),
-            layers.Reshape([window_object.label_width, window_object.out_nums]),
+            layers.Reshape(
+                [window_object.label_width, window_object.out_nums]),
+        ]
+    )
+    return lstm_model
+
+
+def create_lstm_gm_model(window_object):
+    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
+    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
+    custom_LSTM = partial(layers.LSTM, dropout=0.2)
+    lstm_model = models.Sequential(
+        [
+            layers.InputLayer((window_object.input_width,
+                              window_object.features_num)),
+            # custom_LSTM(16, return_sequences=True),
+            custom_LSTM(4, return_sequences=True),
+            custom_LSTM(4, return_sequences=False),
+            layers.Dense(window_object.out_nums * window_object.label_width),
+            layers.Reshape(
+                [window_object.label_width, window_object.out_nums]),
+        ]
+    )
+    return lstm_model
+
+
+def create_single_lstm_model(window_object):
+    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
+    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
+    custom_LSTM = partial(layers.LSTM, dropout=0.2)
+    lstm_model = models.Sequential(
+        [
+            layers.InputLayer((window_object.input_width,
+                              window_object.features_num)),
+            # custom_LSTM(16, return_sequences=True),
+            # custom_LSTM(16, return_sequences=True),
+            custom_LSTM(32, return_sequences=False),
+            layers.Dense(window_object.out_nums * window_object.label_width),
+            layers.Reshape(
+                [window_object.label_width, window_object.out_nums]),
         ]
     )
     return lstm_model
@@ -67,15 +167,19 @@ def create_lstm_model(window_object):
 def create_conv_model(window_object):
     conv_model = models.Sequential(
         [
-            layers.InputLayer((window_object.input_width, window_object.features_num)),
+            layers.InputLayer((window_object.input_width,
+                              window_object.features_num)),
             # layers.BatchNormalization(),
-            layers.Conv1D(filters=20, kernel_size=3, strides=1, padding="same"),
+            layers.Conv1D(filters=20, kernel_size=3,
+                          strides=1, padding="same"),
             layers.BatchNormalization(),
             layers.MaxPool1D(pool_size=2, strides=1, padding="valid"),
-            layers.Conv1D(filters=30, kernel_size=3, strides=1, padding="same"),
+            layers.Conv1D(filters=30, kernel_size=3,
+                          strides=1, padding="same"),
             layers.BatchNormalization(),
             layers.MaxPool1D(pool_size=2, strides=1, padding="valid"),
-            layers.Conv1D(filters=window_object.out_nums, kernel_size=1, strides=1),
+            layers.Conv1D(filters=window_object.out_nums,
+                          kernel_size=1, strides=1),
         ]
     )
     return conv_model
@@ -84,19 +188,42 @@ def create_conv_model(window_object):
 def create_nn_model(window_object):
     nn_model = models.Sequential(
         [
-            layers.InputLayer((window_object.input_width, window_object.features_num)),
+            layers.InputLayer((window_object.input_width,
+                              window_object.features_num)),
             layers.Flatten(),
             layers.Dense(32),
             layers.Dense(32),
             layers.Dense(32),
             layers.Dense(window_object.out_nums * window_object.label_width),
-            layers.Reshape([window_object.label_width, window_object.out_nums]),
+            layers.Reshape(
+                [window_object.label_width, window_object.out_nums]),
         ]
     )
     return nn_model
 
 
+def create_nn_gm_model(window_object):
+    nn_model = models.Sequential(
+        [
+            layers.InputLayer((window_object.input_width,
+                              window_object.features_num)),
+            layers.Flatten(),
+            layers.Dense(8),
+            layers.Dense(8),
+            layers.Dense(8),
+            layers.Dense(8),
+            layers.Dense(8),
+            layers.Dense(8),
+            layers.Dense(window_object.out_nums * window_object.label_width),
+            layers.Reshape(
+                [window_object.label_width, window_object.out_nums]),
+        ]
+    )
+    return nn_model
+
 # # Evaluation functions
+
+
 def nan_R2(y_true, y_pred):
     R2 = []
     _, l = np.shape(y_true)
@@ -139,7 +266,8 @@ class SPLoss(losses.Loss):  # Slip Prevention Loss
         error = y_true - y_pred
         is_positive = y_true > 0
         squared_loss = tf.square(error) / 2
-        squared_loss_for_positive = tf.math.scalar_mul(self.threshold, squared_loss)
+        squared_loss_for_positive = tf.math.scalar_mul(
+            self.threshold, squared_loss)
         return tf.where(is_positive, squared_loss_for_positive, squared_loss)
 
     def get_config(self):
