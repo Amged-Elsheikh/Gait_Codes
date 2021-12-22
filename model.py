@@ -12,10 +12,10 @@ from Custom.models_functions import *
 K = keras.backend
 gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
 gpu_index = -1
-tf.config.experimental.set_visible_devices(devices=gpus[gpu_index], device_type='GPU')
+tf.config.experimental.set_visible_devices(
+    devices=gpus[gpu_index], device_type='GPU')
 # tf.config.experimental.set_virtual_device_configuration(gpus[gpu_index], \
 # [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)])
-
 
 
 def create_window_generator(subject=None):
@@ -27,7 +27,8 @@ def create_window_generator(subject=None):
     w = subject_details[f"S{subject}"]["weight"]
     # #Get trials directory
     trials = ["train_01", "train_02", "val", "test"]
-    trials = list(map(lambda x: f"../Dataset/S{subject}/{x}_dataset.csv", trials))
+    trials = list(
+        map(lambda x: f"../Dataset/S{subject}/{x}_dataset.csv", trials))
     # #Load data
     train_01_df = pd.read_csv(trials[0], index_col="time")
     train_02_df = pd.read_csv(trials[1], index_col="time")
