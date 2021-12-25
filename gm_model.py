@@ -129,18 +129,18 @@ if __name__ == "__main__":
     # Create pandas dataframe that will have all the results
     r2_results = pd.DataFrame(columns=model_dic.keys())
     rmse_results = pd.DataFrame(columns=model_dic.keys())
-    for test_subject in subjects:
-        train_subjects = subjects.copy()
-        train_subjects.remove(test_subject)
-
-        for model_name in model_dic.keys():
-            history, y_true, y_pred, r2, rmse = train_fit_gm(
-                subject=train_subjects, test_subject=test_subject, model_name=model_name, epochs=2000, eval_only=True, load_best=False,)
-            # print(model_name)
-            # print(test_subject)
-            r2_results.loc[f"S{test_subject}", model_name] = r2[0]
-            rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
-            plt.close()
+    test_subject = ["04"]
+    train_subjects = ["01", "02"]
+    for model_name in model_dic.keys():
+        history, y_true, y_pred, r2, rmse = train_fit_gm(
+                            subject=train_subjects, test_subject=test_subject, 
+                            model_name=model_name, epochs=2000,
+                            eval_only=True, load_best=False)
+        # print(model_name)
+        # print(test_subject)
+        r2_results.loc[f"S{test_subject}", model_name] = r2[0]
+        rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
+        plt.close()
 
     r2_results.to_csv("../Results/GM/R2_results.csv")
     rmse_results.to_csv("../Results/GM/RMSE_results.csv")
