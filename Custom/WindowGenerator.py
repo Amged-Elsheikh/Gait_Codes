@@ -4,19 +4,9 @@ from tensorflow import keras
 
 
 class WindowGenerator:
-    def __init__(
-        self,
-        train_01_df,
-        train_02_df,
-        val_df,
-        test_df,
-        input_width=10,
-        label_width=None,
-        shift=1,
-        batch_size=128,
-        add_knee=False,
-        out_labels=["ankle moment"],
-    ):
+    def __init__(self, train_01_df, train_02_df, val_df, test_df,
+                 input_width=10, label_width=None, shift=1,
+                 batch_size=128, add_knee=False, out_labels=["ankle moment"],):
 
         self.batch_size = batch_size
         self.out_labels = out_labels
@@ -43,7 +33,7 @@ class WindowGenerator:
         for i in range(sensors_num // 2):
             self.left_side_col.extend(
                 inputs_col[
-                    self.features_per_sensor * 2 * i : self.features_per_sensor * 2 * i
+                    self.features_per_sensor * 2 * i: self.features_per_sensor * 2 * i
                     + self.features_per_sensor
                 ].tolist()
             )
@@ -51,7 +41,7 @@ class WindowGenerator:
             self.right_side_col.extend(
                 inputs_col[
                     self.features_per_sensor * 2 * i
-                    + self.features_per_sensor : self.features_per_sensor * 2 * i
+                    + self.features_per_sensor: self.features_per_sensor * 2 * i
                     + self.features_per_sensor * 2
                 ].tolist()
             )
@@ -62,8 +52,10 @@ class WindowGenerator:
         # Get the total number of features to use in the input layer so that we do not need to adjust models every time.
         self.features_num = len(self.left_side_col)
         # Add each side labels
-        self.left_side_col.extend(list(map(lambda x: f"Left {x}", self.out_labels)))
-        self.right_side_col.extend(list(map(lambda x: f"Right {x}", self.out_labels)))
+        self.left_side_col.extend(
+            list(map(lambda x: f"Left {x}", self.out_labels)))
+        self.right_side_col.extend(
+            list(map(lambda x: f"Right {x}", self.out_labels)))
 
         ####### Window parameters #########
         # For more details about this part in code go to https://www.tensorflow.org/tutorials/structured_data/time_series
@@ -78,11 +70,13 @@ class WindowGenerator:
         self.total_window_size = input_width + shift
         # Time level window
         self.input_slice = slice(0, input_width)
-        self.input_indices = np.arange(self.total_window_size)[self.input_slice]
+        self.input_indices = np.arange(self.total_window_size)[
+            self.input_slice]
 
         self.label_start = self.total_window_size - self.label_width
         self.labels_slice = slice(self.label_start, None)
-        self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
+        self.label_indices = np.arange(self.total_window_size)[
+            self.labels_slice]
 
         self.left_val_data = self.left_side_data(val_df)
         self.right_val_data = self.right_side_data(val_df)
@@ -130,7 +124,7 @@ class WindowGenerator:
         # Shape is [Batch_size, timestep, features/labels]
         inputs = features[:, self.input_slice, : -self.out_nums]
         # Predict ankle angle & torque
-        labels = features[:, self.labels_slice, -self.out_nums :]
+        labels = features[:, self.labels_slice, -self.out_nums:]
         # Slicing doesn't preserve static shape information, so set the shapes manually. This way the `tf.data.Datasets` are easier to inspect.
         inputs.set_shape([None, self.input_width, None])
         labels.set_shape([None, self.label_width, None])
@@ -262,4 +256,3 @@ class WindowGenerator:
                 f"output timestep: {self.label_width}",
             ]
         )
-

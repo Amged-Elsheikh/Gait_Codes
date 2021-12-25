@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import metrics
 from functools import partial
-from WindowGenerator import WindowGenerator
+from Custom.WindowGenerator import WindowGenerator
 import tensorflow as tf
 from tensorflow.keras import layers, models, losses
 
