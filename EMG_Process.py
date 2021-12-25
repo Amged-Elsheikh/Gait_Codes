@@ -45,33 +45,11 @@ def load_emg_data(inputs_path, emg_file):
     return emg
 
 
-def apply_notch_filter(data):
-    fs = 1/0.0009  # sampling frequancy in Hz
-    f0 = 50  # Notched frequancy
-    Q = 30  # Quality factor
-    b, a = signal.iirnotch(f0, Q, fs)
-    return signal.filtfilt(b, a, data)
-
-
-def apply_filter(emg, order=4, lowband=20, highband=450):
-    fs = 1/0.0009  # Hz
-    low_pass = lowband/(fs*0.5)
-    hig_pass = highband/(fs*0.5)
-    b, a = signal.butter(N=order, Wn=[low_pass, hig_pass], btype="bandpass")
-    return signal.filtfilt(b, a, emg)
-
-
-def remove_outlier(data, detect_factor=30, remove_factor=15):
-    detector = data.apply(np.abs).mean()*detect_factor
-    data = data.apply(lambda x: x if np.abs(x) < detector else x/remove_factor)
-    return data
-
-
 def process_emg_signal(emg, remove_artifacts=True):
     # filter the signals
     filtered_emg = emg.apply(apply_filter)
     filtered_emg = filtered_emg.apply(apply_notch_filter)
-    # Remove The mean
+    # Ensure signal has zero mean
     filtered_emg = filtered_emg-filtered_emg.mean()
     # Remove artifacts
     if remove_artifacts:
@@ -82,24 +60,29 @@ def process_emg_signal(emg, remove_artifacts=True):
     return DEMG
 
 
-def plot_all_emg(emg, file_name=None):
-    m = 1  # number of columns
-    n = int(len(emg.columns)/2)  # number of raws
-    plt.figure(file_name)
-    muscles = ["Tibialis Anterior", "Gastrocnemius Medialis", "Soleus"]
-    for i in range(n):
-        plt.subplot(n, m, i+1)
-        plt.plot(emg.index, emg.iloc[:, 2*i], emg.index, emg.iloc[:, 2*i+1])
-        plt.title(muscles[i])
-        plt.xlim((emg.index[0], emg.index[-1]+0.01))
-    plt.xlabel("Time [s]")
-    plt.suptitle(file_name)
-    plt.tight_layout()
-    plt.draw()
+def apply_filter(emg, order=4, lowband=20, highband=450):
+    fs = 1/0.0009  # Hz
+    low_pass = lowband/(fs*0.5)
+    hig_pass = highband/(fs*0.5)
+    b, a = signal.butter(N=order, Wn=[low_pass, hig_pass], btype="bandpass")
+    return signal.filtfilt(b, a, emg)
+
+
+def apply_notch_filter(data):
+    fs = 1/0.0009  # sampling frequancy in Hz
+    f0 = 50  # Notched frequancy
+    Q = 30  # Quality factor
+    b, a = signal.iirnotch(f0, Q, fs)
+    return signal.filtfilt(b, a, data)
+
+
+def remove_outlier(data, detect_factor=30, remove_factor=15):
+    detector = data.apply(np.abs).mean()*detect_factor
+    data = data.apply(lambda x: x if np.abs(x) < detector else x/remove_factor)
+    return data
+
 
 # Features Functions
-
-
 def get_AR_coeffs(data, num_coeff=6):
     model = AutoReg(data, lags=num_coeff)  # old_names=True)
     model_fit = model.fit()
@@ -112,8 +95,8 @@ def get_MAV(data):
 
 def zero_crossing(data):
     # returns the indexes of where ZC appear
-    zero_crossings = np.where(np.diff(np.signbit(data)))[0]
-    return len(zero_crossings)
+    zero_crossings = np.where(np.diff(np.signbit(data))) # return a tuple with length of 1
+    return len(zero_crossings[0])
 
 
 def get_RMS(data):
@@ -159,10 +142,14 @@ def get_features(DEMG):
         RMS = np.array(RMS)
         # MAV = np.array(MAV)
 
-        dataset_temp = pd.DataFrame({f'DEMG{EMG_num}_AR1': coeff[:, 1], f'DEMG{EMG_num}_AR2': coeff[:, 2],
-                                     f'DEMG{EMG_num}_AR3': coeff[:, 3], f'DEMG{EMG_num}_AR4': coeff[:, 4],
-                                     f'DEMG{EMG_num}_AR5': coeff[:, 5], f'DEMG{EMG_num}_AR6': coeff[:, 6],
-                                     f'DEMG{EMG_num}_ZC': ZC, f'DEMG{EMG_num}_RMS': RMS})
+        dataset_temp = pd.DataFrame({f'DEMG{EMG_num}_AR1': coeff[:, 1],
+                                     f'DEMG{EMG_num}_AR2': coeff[:, 2],
+                                     f'DEMG{EMG_num}_AR3': coeff[:, 3],
+                                     f'DEMG{EMG_num}_AR4': coeff[:, 4],
+                                     f'DEMG{EMG_num}_AR5': coeff[:, 5],
+                                     f'DEMG{EMG_num}_AR6': coeff[:, 6],
+                                     f'DEMG{EMG_num}_ZC': ZC,
+                                     f'DEMG{EMG_num}_RMS': RMS})
 
         dataset = pd.concat([dataset, dataset_temp], axis=1)
 #         print(f"{EMG_label} done")
@@ -171,6 +158,22 @@ def get_features(DEMG):
     dataset.set_index("time", inplace=True)
     # dataset.describe()
     return dataset
+
+
+def plot_all_emg(emg, file_name=None):
+    m = 1  # number of columns
+    n = int(len(emg.columns)/2)  # number of raws
+    plt.figure(file_name)
+    muscles = ["Tibialis Anterior", "Gastrocnemius Medialis", "Soleus"]
+    for i in range(n):
+        plt.subplot(n, m, i+1)
+        plt.plot(emg.index, emg.iloc[:, 2*i], emg.index, emg.iloc[:, 2*i+1])
+        plt.title(muscles[i])
+        plt.xlim((emg.index[0], emg.index[-1]+0.01))
+    plt.xlabel("Time [s]")
+    plt.suptitle(file_name)
+    plt.tight_layout()
+    plt.draw()
 
 
 def plot_RMS(dataset, emg_file):
