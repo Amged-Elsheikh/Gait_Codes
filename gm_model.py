@@ -7,7 +7,7 @@ from tensorflow import keras
 from Custom.models_functions import *
 
 gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
-gpu_index = len(gpus) - 1
+gpu_index = 1
 tf.config.experimental.set_visible_devices(
     devices=gpus[gpu_index], device_type="GPU")
 
@@ -124,8 +124,8 @@ if __name__ == "__main__":
 
     model_dic["lstm_model"] = create_lstm_gm_model
     model_dic["single_lstm_model"] = create_single_lstm_model
-    model_dic["conv_model"] = create_conv_model
-    model_dic["nn_model"] = create_nn_gm_model
+    #model_dic["conv_model"] = create_conv_model
+    #model_dic["nn_model"] = create_nn_gm_model
     # Create pandas dataframe that will have all the results
     r2_results = pd.DataFrame(columns=model_dic.keys())
     rmse_results = pd.DataFrame(columns=model_dic.keys())

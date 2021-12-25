@@ -135,8 +135,8 @@ def create_lstm_gm_model(window_object):
             layers.InputLayer((window_object.input_width,
                               window_object.features_num)),
             # custom_LSTM(16, return_sequences=True),
-            custom_LSTM(4, return_sequences=True),
-            custom_LSTM(4, return_sequences=False),
+            custom_LSTM(32, return_sequences=True),
+            custom_LSTM(32, return_sequences=False),
             layers.Dense(window_object.out_nums * window_object.label_width),
             layers.Reshape(
                 [window_object.label_width, window_object.out_nums]),
@@ -155,7 +155,7 @@ def create_single_lstm_model(window_object):
                               window_object.features_num)),
             # custom_LSTM(16, return_sequences=True),
             # custom_LSTM(16, return_sequences=True),
-            custom_LSTM(32, return_sequences=False),
+            custom_LSTM(128, return_sequences=False),
             layers.Dense(window_object.out_nums * window_object.label_width),
             layers.Reshape(
                 [window_object.label_width, window_object.out_nums]),
