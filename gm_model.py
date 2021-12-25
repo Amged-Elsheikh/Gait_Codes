@@ -12,15 +12,7 @@ tf.config.experimental.set_visible_devices(
     devices=gpus[gpu_index], device_type="GPU")
 
 
-def train_fit_gm(
-    subject,
-    test_subject,
-    model_name,
-    epochs=1,
-    lr=0.001,
-    eval_only=False,
-    load_best=False,
-):
+def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False,):
     """
     subject: List the subjects used for training.
     tested on: subject number in XX string format.
@@ -37,21 +29,12 @@ def train_fit_gm(
     # Get all dataset
     train_set_1, val_set_1 = window_object_1.get_gm_train_val_dataset()
     train_set_2, val_set_2 = window_object_2.get_gm_train_val_dataset()
-    train_set = window_object_1.preprocessing(
-        train_set_1.concatenate(train_set_2),
-        remove_nan=True,
-        shuffle=True,
-        batch_size=None,
-        drop_reminder=True,
-    )
+    train_set = window_object_1.preprocessing(train_set_1.concatenate(train_set_2),
+                                              remove_nan=True, shuffle=True, batch_size=None, drop_reminder=True,)
 
-    val_set = window_object_1.preprocessing(
-        val_set_1.concatenate(val_set_2),
-        remove_nan=True,
-        shuffle=False,
-        batch_size=None,
-        drop_reminder=False,
-    )
+    val_set = window_object_1.preprocessing(val_set_1.concatenate(val_set_2),
+                                            remove_nan=True, shuffle=False, batch_size=None, drop_reminder=False,
+                                            )
 
     ##############################################################################################################
     # Load and compile new model
@@ -152,13 +135,7 @@ if __name__ == "__main__":
 
         for model_name in model_dic.keys():
             history, y_true, y_pred, r2, rmse = train_fit_gm(
-                subject=train_subjects,
-                test_subject=test_subject,
-                model_name=model_name,
-                epochs=2000,
-                eval_only=True,
-                load_best=False,
-            )
+                subject=train_subjects, test_subject=test_subject, model_name=model_name, epochs=2000, eval_only=True, load_best=False,)
             # print(model_name)
             # print(test_subject)
             r2_results.loc[f"S{test_subject}", model_name] = r2[0]
