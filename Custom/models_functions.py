@@ -9,6 +9,7 @@ from Custom.WindowGenerator import WindowGenerator
 import tensorflow as tf
 from tensorflow.keras import layers, models, losses
 
+tf.random.set_seed(42)
 """
 This python file will contains custm function for preparing models, tf models, custom losses and custom evaluation functions.
 """

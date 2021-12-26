@@ -3,7 +3,6 @@ import os
 from functools import partial
 import pandas as pd
 import tensorflow as tf
-from tensorflow import keras
 from Custom.models_functions import *
 
 gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
@@ -38,14 +37,14 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
 
     ##############################################################################################################
     # Load and compile new model
-    keras.backend.clear_session()
+    tf.keras.backend.clear_session()
     model = model_dic[model_name](window_object_1)
     model.compile(
-        optimizer=keras.optimizers.Nadam(learning_rate=lr), loss=SPLoss(loss_factor)
+        optimizer=tf.keras.optimizers.Nadam(learning_rate=lr), loss=SPLoss(loss_factor)
     )
     # model.summary()
     # input("Click Enter to continue")
-    model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
+    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=model_file,
         save_weights_only=True,
         monitor="val_loss",
@@ -101,6 +100,8 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
 
 
 if __name__ == "__main__":
+    tf.random.set_seed(42)
+
     # Check for GPU
     if not tf.test.is_built_with_cuda():
         raise print("No GPU found")
@@ -139,8 +140,8 @@ if __name__ == "__main__":
         print(model_name)
         history, y_true, y_pred, r2, rmse = train_fit_gm(
             subject=train_subjects, test_subject=test_subject,
-            model_name=model_name, epochs=200,
-            eval_only=True, load_best=False)
+            model_name=model_name, epochs=600,
+            eval_only=False, load_best=False)
 
         r2_results.loc[f"S{test_subject}", model_name] = r2[0]
         rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
