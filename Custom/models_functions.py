@@ -127,16 +127,14 @@ def create_lstm_model(window_object):
 
 
 def create_lstm_gm_model(window_object):
-    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
-    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
-    custom_LSTM = partial(layers.LSTM, dropout=0.2)
+    custom_LSTM = partial(layers.LSTM, dropout=0.3)
     lstm_model = models.Sequential(
         [
             layers.InputLayer((window_object.input_width,
                               window_object.features_num)),
-            # custom_LSTM(16, return_sequences=True),
-            custom_LSTM(32, return_sequences=True),
-            custom_LSTM(32, return_sequences=False),
+            # custom_LSTM(4, return_sequences=True),
+            custom_LSTM(4, return_sequences=True),
+            custom_LSTM(4, return_sequences=False),
             layers.Dense(window_object.out_nums * window_object.label_width),
             layers.Reshape(
                 [window_object.label_width, window_object.out_nums]),
@@ -155,7 +153,7 @@ def create_single_lstm_model(window_object):
                               window_object.features_num)),
             # custom_LSTM(16, return_sequences=True),
             # custom_LSTM(16, return_sequences=True),
-            custom_LSTM(128, return_sequences=False),
+            custom_LSTM(256, return_sequences=False),
             layers.Dense(window_object.out_nums * window_object.label_width),
             layers.Reshape(
                 [window_object.label_width, window_object.out_nums]),
@@ -238,8 +236,9 @@ def nan_R2(y_true, y_pred):
 
 
 def nan_rmse(y_true, y_pred):
-    mse = partial(metrics.mean_squared_error, squared=False)
-    rmse = []
+    rmse = partial(metrics.mean_squared_error, squared=False)
+    error = []
+    max_error = []
     _, l = np.shape(y_true)
     for i in range(l):
         y_true_col = y_true[:, i]
@@ -247,8 +246,9 @@ def nan_rmse(y_true, y_pred):
         logic = np.isfinite(y_true_col)
         y_true_col = y_true_col[logic]
         y_pred_col = y_pred_col[logic]
-        rmse.append(mse(y_true_col, y_pred_col))
-    return np.around(rmse, 3)
+        error.append(rmse(y_true_col, y_pred_col))
+        max_error.append(metrics.max_error(y_true_col, y_pred_col))
+    return np.around(error, 3), np.around(max_error, 3)
 
 
 def custom_loss(y_true, y_pred):
@@ -294,17 +294,16 @@ def plot_learning_curve(history, folder):
         plt.savefig(f"{folder}learning_curve.pdf")
 
 
-def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, folder):
+def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, folder):
     time = [i / 20 for i in range(len(y_true))]
     plt.figure("Prediction")
     for i, col in enumerate(list(out_labels)):
         plt.subplot(len(out_labels), 1, i + 1)
         print(f"{col} R2 score: {R2_score[i]}")
         print(f"{col} RMSE result: {rmse_result[i]}")
+        print(f"{col} max error is {max_error}Nm/Kg")
         plt.plot(time, y_true[:, i], linewidth=2.5)
-        plt.plot(
-            time, y_pred[:, i], "r--", linewidth=2.5,
-        )
+        plt.plot(time, y_pred[:, i], "r--", linewidth=2.5,)
         plt.title(col)
         if i == 0:
             plt.legend(["y_true", "y_pred"], loc="lower left")

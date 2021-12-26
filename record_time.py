@@ -10,15 +10,15 @@ date = subject_details[f"S{subject}"]["date"]
 
 inputs_path = f"../Data/S{subject}/{date}/record_periods/"
 outputs_path = f"../Outputs/S{subject}/{date}/record_periods/"
-input_files = ['train_01', 'train_02', 'val', 'test']
+trials = ['train_01', 'train_02', 'val', 'test']
 
 def interval2seq(data, side):
-    for start, end in zip(periods[f"{side}_start"],periods[f"{side}_end"]):
+    for start, end in zip(periods[f"{side}_start"][:-1],periods[f"{side}_end"][:-1]):
         data.iloc[start:end]=True
 
 left_time_sum = 0
 right_time_sum = 0
-for input_file in input_files:
+for input_file in trials:
     # Create output file name
     output_file = f"{outputs_path}{input_file}_record_periods.csv"
     # Read the data
