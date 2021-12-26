@@ -145,5 +145,5 @@ def get_dataset(subject=None):
         Dataset.rename(columns=new_col,inplace=True)
         Dataset.to_csv(output_name)
 
-
-get_dataset()
+for s in ["01","02","04"]:
+    get_dataset(s)
