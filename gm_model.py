@@ -138,7 +138,7 @@ if __name__ == "__main__":
         print(model_name)
         history, y_true, y_pred, r2, rmse = train_fit_gm(
             subject=train_subjects, test_subject=test_subject,
-            model_name=model_name, epochs=300,
+            model_name=model_name, epochs=1000,
             eval_only=False, load_best=False)
 
         r2_results.loc[f"S{test_subject}", model_name] = r2[0]

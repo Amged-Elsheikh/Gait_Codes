@@ -210,9 +210,6 @@ def create_nn_gm_model(window_object):
             layers.Dense(8),
             layers.Dense(8),
             layers.Dense(8),
-            layers.Dense(8),
-            layers.Dense(8),
-            layers.Dense(8),
             layers.Dense(window_object.out_nums * window_object.label_width),
             layers.Reshape(
                 [window_object.label_width, window_object.out_nums]),
@@ -300,20 +297,22 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, f
     plt.figure("Prediction")
     for i, col in enumerate(list(out_labels)):
         plt.subplot(len(out_labels), 1, i + 1)
+        
         print(f"{col} R2 score: {R2_score[i]}")
         print(f"{col} RMSE result: {rmse_result[i]}")
         print(f"{col} max error is {max_error}Nm/Kg")
-        plt.plot(time, y_true[:, i], linewidth=2.5)
-        plt.plot(time, y_pred[:, i], "r--", linewidth=2.5,)
+        plt.plot(time, -y_true[:, i], linewidth=2.5)
+        plt.plot(time, -y_pred[:, i], "r--", linewidth=2.5,)
         plt.title(col)
         if i == 0:
-            plt.legend(["y_true", "y_pred"], loc="lower left")
-        plt.xlim((time[-600], time[-100]))
+            plt.legend(["y_true", "y_pred"], loc="upper right")
+        plt.xlim((0, 9))
         plt.xlabel("Time [s]")
         if "moment" in col:
             plt.ylabel("Moment [Nm]")
         else:
             plt.ylabel("Angle [Degree]")
+        plt.grid(True)
     plt.tight_layout()
     plt.savefig(f"{folder}{out_labels[i]}.svg")
     plt.savefig(f"{folder}{out_labels[i]}.pdf")

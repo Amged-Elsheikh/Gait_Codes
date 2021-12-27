@@ -201,7 +201,7 @@ def emg_to_features(subject=None, remove_artifacts=True):
     outputs_path = f"../Outputs/S{subject}/{date}/EMG/"
     # Get EMG files directories
     inputs_names, output_files = get_emg_files(subject, outputs_path)
-    trials = trials = ["test", "train_01", "train_02", "val"]
+    trials = ["test", "train_01", "train_02", "val"]
     for emg_file, output_file, trial in zip(inputs_names, output_files, trials):
         # Preprocessing
         emg = load_emg_data(subject, inputs_path, emg_file, trial)  # Load data
