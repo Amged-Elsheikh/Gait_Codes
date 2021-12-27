@@ -95,7 +95,7 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
     rmse_result, max_error = nan_rmse(y_true, y_pred)
     plot_results(y_true, y_pred, out_labels, r2_score,
                  rmse_result, max_error, folder)
-    plt.close()
+    plt.draw()
     return history, y_true, y_pred, r2_score, rmse_result
 
 
@@ -124,26 +124,28 @@ if __name__ == "__main__":
     # model_name = "nn_model"
     model_dic = {}
 
-    model_dic["lstm_model"] = create_lstm_gm_model
+    model_dic["LSTM model"] = create_lstm_gm_model
     # model_dic["single_lstm_model"] = create_single_lstm_model
-    model_dic["conv_model"] = create_conv_model
-    model_dic["nn_model"] = create_nn_gm_model
+    model_dic["CNN model"] = create_conv_model
+    model_dic["NN model"] = create_nn_gm_model
 
     # Create pandas dataframe that will have all the results
     r2_results = pd.DataFrame(columns=model_dic.keys())
     rmse_results = pd.DataFrame(columns=model_dic.keys())
     test_subject = "04"
     train_subjects = ["01", "02"]
+    predictions = {}
     for model_name in model_dic.keys():
         print(model_name)
         history, y_true, y_pred, r2, rmse = train_fit_gm(
             subject=train_subjects, test_subject=test_subject,
-            model_name=model_name, epochs=1000,
-            eval_only=False, load_best=False)
-
+            model_name=model_name, epochs=500,
+            eval_only=True, load_best=False)
+        predictions[model_name] = y_pred
         r2_results.loc[f"S{test_subject}", model_name] = r2[0]
         rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
         plt.close()
 
     r2_results.to_csv("../Results/GM/R2_results.csv")
     rmse_results.to_csv("../Results/GM/RMSE_results.csv")
+    plot_models(predictions, y_true)

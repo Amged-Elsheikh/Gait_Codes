@@ -207,9 +207,9 @@ def create_nn_gm_model(window_object):
             layers.InputLayer((window_object.input_width,
                               window_object.features_num)),
             layers.Flatten(),
-            layers.Dense(8),
-            layers.Dense(8),
-            layers.Dense(8),
+            layers.Dense(32),
+            layers.Dense(32),
+            layers.Dense(32),
             layers.Dense(window_object.out_nums * window_object.label_width),
             layers.Reshape(
                 [window_object.label_width, window_object.out_nums]),
@@ -297,19 +297,18 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, f
     plt.figure("Prediction")
     for i, col in enumerate(list(out_labels)):
         plt.subplot(len(out_labels), 1, i + 1)
-        
         print(f"{col} R2 score: {R2_score[i]}")
         print(f"{col} RMSE result: {rmse_result[i]}")
         print(f"{col} max error is {max_error}Nm/Kg")
         plt.plot(time, -y_true[:, i], linewidth=2.5)
-        plt.plot(time, -y_pred[:, i], "r--", linewidth=2.5,)
+        plt.plot(time, -y_pred[:, i], "r--", linewidth=2,)
         plt.title(col)
         if i == 0:
-            plt.legend(["y_true", "y_pred"], loc="upper right")
+            plt.legend(["measured moment", "prediction"])
         plt.xlim((0, 9))
         plt.xlabel("Time [s]")
         if "moment" in col:
-            plt.ylabel("Moment [Nm]")
+            plt.ylabel("Moment [Nm/kg]")
         else:
             plt.ylabel("Angle [Degree]")
         plt.grid(True)
@@ -317,3 +316,35 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, f
     plt.savefig(f"{folder}{out_labels[i]}.svg")
     plt.savefig(f"{folder}{out_labels[i]}.pdf")
     plt.draw()
+
+
+def plot_models(predictions: dict, y_true):
+    time = [i / 20 for i in range(len(y_true))]
+    # fig, ax = plt.subplots(nrows=len(predictions.keys()))
+
+    for i, model_name in enumerate(predictions.keys()):
+        plt.subplot(len(predictions.keys()), 1, i+1)
+        # if i == len(predictions.keys())-1:
+        #     plt.subplot(len(predictions.keys()), 1, i+1)
+        #     y_true_lable = "maesured moment"
+        #     y_pred_lable = "prediction"
+        # else:
+        #     y_true_lable = None
+        #     y_pred_lable = None
+
+        plt.plot(time, -y_true, linewidth=2.5, label="measured moment")
+        plt.plot(time, -predictions[model_name],
+                 "r--", linewidth=2, label="prediction")
+        plt.title(model_name)
+        # if i == 0:
+        #     plt.legend(["measured moment", "prediction"])
+        plt.xlim((0, 9))
+        plt.xlabel("Time [s]")
+        plt.ylabel("Moment [Nm/kg]")
+        plt.grid(True)
+    plt.legend(bbox_to_anchor=(1,-0.6), loc="lower right",
+                borderaxespad=0, ncol=2)
+    plt.tight_layout()
+    plt.draw()
+    plt.savefig("../models_results.pdf")
+    plt.close()
