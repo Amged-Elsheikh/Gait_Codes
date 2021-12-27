@@ -6,6 +6,7 @@
 5. get features
 """
 import json
+from Dataset_generator import *
 from statsmodels.tsa.ar_model import AutoReg
 from scipy import signal
 import matplotlib.pyplot as plt
@@ -111,13 +112,13 @@ def wave_length(data):
 
 
 def get_features(DEMG):
-    step = 0.05
+    step = 0.1
     dataset = pd.DataFrame()
     time_limit = max(DEMG.index)
     print(f"time_limit: {time_limit}s")
     for EMG_num in range(1, len(DEMG.columns)+1):
         start = 0
-        end = 0.150
+        end = 0.25
         coeff = []
         # MAV = []
         RMS = []
@@ -207,4 +208,8 @@ def emg_to_features(subject=None, remove_artifacts=True):
 
 for s in ["01","02","04"]:
     emg_to_features(s, remove_artifacts=True)
-plt.close()
+    try:
+        get_dataset(s)
+    except:
+        pass
+    plt.close()

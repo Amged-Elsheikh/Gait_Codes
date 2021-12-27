@@ -2,15 +2,6 @@ import pandas as pd
 import numpy as np
 import json
 
-new_col = {'knee_angle_r': "Right knee angle",
-           'ankle_angle_r': 'Right ankle angle',
-           'knee_angle_l': "Left knee angle",
-           'ankle_angle_l': 'Left ankle angle',
-           'ankle_angle_r_moment': "Right ankle moment",
-           'knee_angle_r_moment': "Right knee moment",
-           'ankle_angle_l_moment': "Left ankle moment",
-           'knee_angle_l_moment': "Left knee moment"}
-
 
 def load_IK(ik_file):
     """
@@ -141,9 +132,20 @@ def get_dataset(subject=None):
 
         Dataset.drop(columns=['left_side', 'right_side'],
                      inplace=True)  # Drop periods columns
-        
-        Dataset.rename(columns=new_col,inplace=True)
+
+        new_col = {'knee_angle_r': "Right knee angle",
+                   'ankle_angle_r': 'Right ankle angle',
+                   'knee_angle_l': "Left knee angle",
+                   'ankle_angle_l': 'Left ankle angle',
+                   'ankle_angle_r_moment': "Right ankle moment",
+                   'knee_angle_r_moment': "Right knee moment",
+                   'ankle_angle_l_moment': "Left ankle moment",
+                   'knee_angle_l_moment': "Left knee moment"}
+
+        Dataset.rename(columns=new_col, inplace=True)
         Dataset.to_csv(output_name)
 
-for s in ["01","02","04"]:
-    get_dataset(s)
+
+if __name__ == "__main__":
+    for s in ["01", "02", "04"]:
+        get_dataset(s)
