@@ -8,7 +8,12 @@
         "delay": {"train_01":[-10,-10],
             "train_02":[-13,-13],
             "val":[-12,-12],
-            "test":[-3,-3]}
+            "test":[-3,-3]},
+
+        "emg_sync": {"train_01":{"start":5.61, "length":185},
+                     "train_02":{"start":4.94, "length":183},
+                     "val":{"start":5.81, "length":60},
+                     "test":{"start":3.43, "length":63.5}}
     },
     "S02": {
         "date": 20211111,
@@ -19,7 +24,12 @@
         "delay": {"train_01":[-13,-13],
                   "train_02":[-4,-4],
                   "val":[-6,-6],
-                  "test":[-5,-5]}
+                  "test":[-5,-5]},
+
+        "emg_sync": {"train_01":{"start":7.90, "length":192.9},
+                     "train_02":{"start":7.09, "length":186},
+                     "val":{"start":7.21, "length":69},
+                     "test":{"start":6.88, "length":70.5}}
     },
 	"S03": {
         "date": 20210823,
@@ -30,7 +40,12 @@
         "delay": {"train_01":[0],
                   "train_02":[0],
                   "val":[0],
-                  "test":[0]}
+                  "test":[0]},
+
+        "emg_sync": {"train_01":{"start":0, "length":0},
+                     "train_02":{"start":0, "length":0},
+                     "val":{"start":0, "length":0},
+                     "test":{"start":0, "length":0}}
     },
     "S04": {
         "date": 20211122,
@@ -41,7 +56,12 @@
         "delay": {"train_01":[-11,-11],
                   "train_02":[0,0],
                   "val":[-4,-4],
-                  "test":[-4,-4]}
+                  "test":[-4,-4]},
+
+        "emg_sync": {"train_01":{"start":8.03, "length":186.7},
+                     "train_02":{"start":5.36, "length":186},
+                     "val":{"start":5.02, "length":70},
+                     "test":{"start":5.02, "length":68}}
     },
 	"S05": {
         "date": 20211207,
@@ -52,6 +72,11 @@
         "delay": {"train_01":[13,13],
                   "train_02":[16,16],
                   "val":[5,5],
-                  "test":[4,4]}
+                  "test":[4,4]},
+
+        "emg_sync": {"train_01":{"start":0, "length":0},
+                     "train_02":{"start":0, "length":0},
+                     "val":{"start":0, "length":0},
+                     "test":{"start":0, "length":0}}
     }
 }

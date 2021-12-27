@@ -39,13 +39,19 @@ def get_emg_files(subject, outputs_path):
     return inputs_names, output_files
 
 
-def load_emg_data(inputs_path, emg_file):
-    emg = pd.read_csv(f"{inputs_path}{emg_file}", header=sensors_num)
+def load_emg_data(subject, inputs_path, emg_file, trial):
+    delsys = pd.read_csv(f"{inputs_path}{emg_file}", header=0)
+    # Rename time column
+    delsys.columns = delsys.columns.str.replace("X[s]", "time", regex=False)
+    # Set time column as the index
+    delsys.set_index("time", inplace=True)
+    # Keep EMG only
+    emg = delsys.filter(regex="EMG")
     emg.columns = emg.columns.str.replace(": EMG.*", "", regex=True)
     emg.columns = emg.columns.str.replace("Trigno IM ", "", regex=True)
-    emg.columns = emg.columns.str.replace("X [s]", "time", regex=False)
-    emg.set_index("time", inplace=True)
-    return emg
+    start = subject_details[f"S{subject}"]["emg_sync"][trial]["start"]
+    end = start + subject_details[f"S{subject}"]["emg_sync"][trial]["length"]
+    return emg.loc[(start<=emg.index) & (emg.index<=end)]
 
 
 def process_emg_signal(emg, remove_artifacts=True):
@@ -195,10 +201,15 @@ def emg_to_features(subject=None, remove_artifacts=True):
     outputs_path = f"../Outputs/S{subject}/{date}/EMG/"
     # Get EMG files directories
     inputs_names, output_files = get_emg_files(subject, outputs_path)
-    for emg_file, output_file in zip(inputs_names, output_files):
+    trials = trials = ["test", "train_01", "train_02", "val"]
+    for emg_file, output_file, trial in zip(inputs_names, output_files, trials):
         # Preprocessing
-        emg = load_emg_data(inputs_path, emg_file)  # Load data
-        DEMG = process_emg_signal(emg, remove_artifacts)  # preprocess the data
+        emg = load_emg_data(subject, inputs_path, emg_file, trial)  # Load data
+        # reset time
+        emg.index -=min(emg.index)
+        emg.index = np.round(emg.index,4)
+        # preprocess the data
+        DEMG = process_emg_signal(emg, remove_artifacts)
         dataset = get_features(DEMG)  # get features
         # save dataset
         dataset.to_csv(output_file)
