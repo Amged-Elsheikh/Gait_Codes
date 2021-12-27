@@ -112,7 +112,7 @@ def wave_length(data):
 
 
 def get_features(DEMG):
-    step = 0.1
+    step = 0.05
     dataset = pd.DataFrame()
     time_limit = max(DEMG.index)
     print(f"time_limit: {time_limit}s")
