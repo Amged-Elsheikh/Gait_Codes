@@ -40,7 +40,7 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
     tf.keras.backend.clear_session()
     model = model_dic[model_name](window_object_1)
     model.compile(
-        optimizer=tf.keras.optimizers.Nadam(learning_rate=lr), loss=SPLoss(loss_factor)
+        optimizer=tf.keras.optimizers.SGD(learning_rate=lr), loss=SPLoss(loss_factor)
     )
     # model.summary()
     # input("Click Enter to continue")
@@ -95,7 +95,7 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
     rmse_result, max_error = nan_rmse(y_true, y_pred)
     plot_results(y_true, y_pred, out_labels, r2_score,
                  rmse_result, max_error, folder)
-    plt.draw()
+    plt.close()
     return history, y_true, y_pred, r2_score, rmse_result
 
 
@@ -108,13 +108,11 @@ if __name__ == "__main__":
     # Get all subjects details
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
-    # get subjects
-    subjects = ["01", "02", "04"]
     # Choose features and labels
     features = ["RMS", "ZC"]  # Used EMG features
     add_knee = False  # True if you want to use knee angle as an extra input
     out_labels = ["ankle moment"]  # Labels to be predicted
-    loss_factor = 5.0  # Loss factor to prevent ankle slip
+    loss_factor = 0.0  # Loss factor to prevent ankle slip
     # Window object parameters
     input_width = 15
     shift = 3
@@ -128,8 +126,8 @@ if __name__ == "__main__":
 
     model_dic["lstm_model"] = create_lstm_gm_model
     # model_dic["single_lstm_model"] = create_single_lstm_model
-    #model_dic["conv_model"] = create_conv_model
-    #model_dic["nn_model"] = create_nn_gm_model
+    model_dic["conv_model"] = create_conv_model
+    model_dic["nn_model"] = create_nn_gm_model
 
     # Create pandas dataframe that will have all the results
     r2_results = pd.DataFrame(columns=model_dic.keys())
@@ -140,7 +138,7 @@ if __name__ == "__main__":
         print(model_name)
         history, y_true, y_pred, r2, rmse = train_fit_gm(
             subject=train_subjects, test_subject=test_subject,
-            model_name=model_name, epochs=600,
+            model_name=model_name, epochs=1000,
             eval_only=False, load_best=False)
 
         r2_results.loc[f"S{test_subject}", model_name] = r2[0]

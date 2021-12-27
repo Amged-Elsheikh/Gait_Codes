@@ -5,16 +5,16 @@
 4. remove artifacts
 5. get features
 """
+import json
+from statsmodels.tsa.ar_model import AutoReg
+from scipy import signal
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from scipy import signal
 # import os
-from statsmodels.tsa.ar_model import AutoReg
 # from sklearn.preprocessing import MinMaxScaler
-import json
 
 pd.set_option('display.max_columns', None)
 plt.rcParams["figure.figsize"] = [14, 10]
@@ -58,7 +58,7 @@ def process_emg_signal(emg, remove_artifacts=True):
         for col in filtered_emg.columns:
             filtered_emg.loc[:, col] = remove_outlier(filtered_emg.loc[:, col])
     # differentiate the signal
-    DEMG = filtered_emg.copy()#apply(np.gradient)/0.0009
+    DEMG = filtered_emg.copy()  # apply(np.gradient)/0.0009
     return DEMG
 
 
@@ -78,7 +78,7 @@ def apply_notch_filter(data):
     return signal.filtfilt(b, a, data)
 
 
-def remove_outlier(data, detect_factor=30, remove_factor=15):
+def remove_outlier(data, detect_factor=20, remove_factor=15):
     detector = data.apply(np.abs).mean()*detect_factor
     data = data.apply(lambda x: x if np.abs(x) < detector else x/remove_factor)
     return data
@@ -97,7 +97,8 @@ def get_MAV(data):
 
 def zero_crossing(data):
     # returns the indexes of where ZC appear
-    zero_crossings = np.where(np.diff(np.signbit(data))) # return a tuple with length of 1
+    # return a tuple with length of 1
+    zero_crossings = np.where(np.diff(np.signbit(data)))
     return len(zero_crossings[0])
 
 
@@ -116,7 +117,7 @@ def get_features(DEMG):
     print(f"time_limit: {time_limit}s")
     for EMG_num in range(1, len(DEMG.columns)+1):
         start = 0
-        end = 0.250
+        end = 0.150
         coeff = []
         # MAV = []
         RMS = []
@@ -128,7 +129,7 @@ def get_features(DEMG):
             window_data = sensor_data[(DEMG.index >= start) & (
                 DEMG.index < end)].to_numpy()
             # #Get the AR coefficients
-            coeff.append(get_AR_coeffs(window_data))
+            # coeff.append(get_AR_coeffs(window_data))
             # #Get the MAV
             # MAV.append(get_MAV(window_data))
             # #Get RMS
@@ -144,14 +145,14 @@ def get_features(DEMG):
         RMS = np.array(RMS)
         # MAV = np.array(MAV)
 
-        dataset_temp = pd.DataFrame({f'DEMG{EMG_num}_AR1': coeff[:, 1],
-                                     f'DEMG{EMG_num}_AR2': coeff[:, 2],
-                                     f'DEMG{EMG_num}_AR3': coeff[:, 3],
-                                     f'DEMG{EMG_num}_AR4': coeff[:, 4],
-                                     f'DEMG{EMG_num}_AR5': coeff[:, 5],
-                                     f'DEMG{EMG_num}_AR6': coeff[:, 6],
-                                     f'DEMG{EMG_num}_ZC': ZC,
-                                     f'DEMG{EMG_num}_RMS': RMS})
+        dataset_temp = pd.DataFrame({f'DEMG{EMG_num}_ZC': ZC,
+                                     f'DEMG{EMG_num}_RMS': RMS,})
+                                    #  f'DEMG{EMG_num}_AR1': coeff[:, 1],
+                                    #  f'DEMG{EMG_num}_AR2': coeff[:, 2],
+                                    #  f'DEMG{EMG_num}_AR3': coeff[:, 3],
+                                    #  f'DEMG{EMG_num}_AR4': coeff[:, 4],
+                                    #  f'DEMG{EMG_num}_AR5': coeff[:, 5],
+                                    #  f'DEMG{EMG_num}_AR6': coeff[:, 6]})
 
         dataset = pd.concat([dataset, dataset_temp], axis=1)
 #         print(f"{EMG_label} done")
@@ -204,5 +205,6 @@ def emg_to_features(subject=None, remove_artifacts=True):
         plot_RMS(dataset, emg_file)
 
 
-emg_to_features(remove_artifacts=True)
-plt.show()
+for s in ["01","02","04"]:
+    emg_to_features(s, remove_artifacts=True)
+plt.close()

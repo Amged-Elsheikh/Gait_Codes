@@ -185,14 +185,15 @@ def create_conv_model(window_object):
 
 
 def create_nn_model(window_object):
+    custom_nn = partial(layers.Dense, units=16, activation='relu')
     nn_model = models.Sequential(
         [
             layers.InputLayer((window_object.input_width,
                               window_object.features_num)),
             layers.Flatten(),
-            layers.Dense(32),
-            layers.Dense(32),
-            layers.Dense(32),
+            custom_nn(),
+            custom_nn(),
+            custom_nn(),
             layers.Dense(window_object.out_nums * window_object.label_width),
             layers.Reshape(
                 [window_object.label_width, window_object.out_nums]),
