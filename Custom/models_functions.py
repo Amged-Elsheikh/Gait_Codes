@@ -16,9 +16,6 @@ This python file will contains custm function for preparing models, tf models, c
 
 # # Data preparation
 
-with open("subject_details.json", "r") as f:
-    subject_details = json.load(f)
-
 
 def scale_function(data, weight, features_scaler, angle_scaler):
     """This function will scale the dataset, if you do not want to scale something, set it's value to None.
@@ -65,6 +62,8 @@ def create_window_generator(
     if len(subject) == 1:
         subject = "0" + subject
     # #Get subject weight.
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
     w = subject_details[f"S{subject}"]["weight"]
     # #Get trials directory
     trials = ["train_01", "train_02", "val", "test"]
@@ -128,15 +127,14 @@ def create_lstm_model(window_object):
 
 
 def create_lstm_gm_model(window_object):
-    custom_LSTM = partial(layers.LSTM, dropout=0.3)
+    custom_LSTM = partial(layers.LSTM, units=4, dropout=0.3)
     lstm_model = models.Sequential(
         [
             layers.InputLayer((window_object.input_width,
                               window_object.features_num)),
-            layers.BatchNormalization(),
             # custom_LSTM(4, return_sequences=True),
-            custom_LSTM(4, return_sequences=True),
-            custom_LSTM(4, return_sequences=False),
+            custom_LSTM(return_sequences=True),
+            custom_LSTM(return_sequences=False),
             layers.Dense(window_object.out_nums * window_object.label_width),
             layers.Reshape(
                 [window_object.label_width, window_object.out_nums]),
@@ -170,7 +168,6 @@ def create_conv_model(window_object):
             layers.InputLayer((window_object.input_width,
                               window_object.features_num)),
             # layers.BatchNormalization(),
-            layers.BatchNormalization(),
             layers.Conv1D(filters=20, kernel_size=3,
                           strides=1, padding="same"),
             layers.BatchNormalization(),
@@ -193,7 +190,6 @@ def create_nn_model(window_object):
             layers.InputLayer((window_object.input_width,
                               window_object.features_num)),
             layers.Flatten(),
-            layers.BatchNormalization(),
             custom_nn(),
             custom_nn(),
             custom_nn(),
