@@ -77,9 +77,9 @@ def create_window_generator(
     test_df = pd.read_csv(trials[3], index_col="time")
     # #Prepare scalers
     features_scaler = MinMaxScaler(feature_range=(0, 1))
-    features_scaler.fit(train_01_df.iloc[:400, :-8])
+    features_scaler.fit(train_01_df.dropna().iloc[:100, :-8])
     angle_scaler = MinMaxScaler(feature_range=(0, 1))
-    angle_scaler.fit(train_01_df.iloc[:400, -8:-4])
+    angle_scaler.fit(train_01_df.dropna().iloc[:100, -8:-4])
     # #Scale the dataset
     for data in [train_01_df, train_02_df, val_df, test_df]:
         data = scale_function(
@@ -133,6 +133,7 @@ def create_lstm_gm_model(window_object):
         [
             layers.InputLayer((window_object.input_width,
                               window_object.features_num)),
+            layers.BatchNormalization(),
             # custom_LSTM(4, return_sequences=True),
             custom_LSTM(4, return_sequences=True),
             custom_LSTM(4, return_sequences=False),
@@ -169,6 +170,7 @@ def create_conv_model(window_object):
             layers.InputLayer((window_object.input_width,
                               window_object.features_num)),
             # layers.BatchNormalization(),
+            layers.BatchNormalization(),
             layers.Conv1D(filters=20, kernel_size=3,
                           strides=1, padding="same"),
             layers.BatchNormalization(),
@@ -191,6 +193,7 @@ def create_nn_model(window_object):
             layers.InputLayer((window_object.input_width,
                               window_object.features_num)),
             layers.Flatten(),
+            layers.BatchNormalization(),
             custom_nn(),
             custom_nn(),
             custom_nn(),
