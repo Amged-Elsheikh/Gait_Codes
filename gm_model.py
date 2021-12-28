@@ -1,14 +1,11 @@
 import json
 import os
 from functools import partial
+
 import pandas as pd
 import tensorflow as tf
-from Custom.models_functions import *
 
-gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
-gpu_index = 1
-tf.config.experimental.set_visible_devices(
-    devices=gpus[gpu_index], device_type="GPU")
+from Custom.models_functions import *
 
 
 def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False,):
@@ -67,6 +64,7 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
                 callbacks=[model_checkpoint_callback],
             )
             plot_learning_curve(history, folder)
+            plt.close()
         else:
             history = "No training was conducted"
     except KeyboardInterrupt:
@@ -102,6 +100,10 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
 if __name__ == "__main__":
     tf.random.set_seed(42)
 
+    gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
+    gpu_index = 1
+    tf.config.experimental.set_visible_devices(
+        devices=gpus[gpu_index], device_type="GPU")
     # Check for GPU
     if not tf.test.is_built_with_cuda():
         raise print("No GPU found")
@@ -124,7 +126,7 @@ if __name__ == "__main__":
     # model_name = "nn_model"
     model_dic = {}
 
-    model_dic["LSTM model"] = create_lstm_gm_model
+    model_dic["LSTM model"] = create_lstm_model
     # model_dic["single_lstm_model"] = create_single_lstm_model
     model_dic["CNN model"] = create_conv_model
     model_dic["NN model"] = create_nn_gm_model
@@ -132,20 +134,26 @@ if __name__ == "__main__":
     # Create pandas dataframe that will have all the results
     r2_results = pd.DataFrame(columns=model_dic.keys())
     rmse_results = pd.DataFrame(columns=model_dic.keys())
-    test_subject = "04"
-    train_subjects = ["01", "02"]
-    predictions = {}
-    for model_name in model_dic.keys():
-        print(model_name)
-        history, y_true, y_pred, r2, rmse = train_fit_gm(
-            subject=train_subjects, test_subject=test_subject,
-            model_name=model_name, epochs=500,
-            eval_only=True, load_best=False)
-        predictions[model_name] = y_pred
-        r2_results.loc[f"S{test_subject}", model_name] = r2[0]
-        rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
-        plt.close()
+    # test_subject = "04"
+    # train_subjects = ["01", "02"]
+    subjects = ["01", "02", "04"]
+    for test_subject in subjects:
+        train_subjects = subjects.copy()
+        train_subjects.remove(test_subject)
+        predictions = {}
+        for model_name in model_dic.keys():
+            print(model_name)
+            history, y_true, y_pred, r2, rmse = train_fit_gm(
+                subject=train_subjects, test_subject=test_subject,
+                model_name=model_name, epochs=500,
+                eval_only=True, load_best=False)
+            predictions[model_name] = y_pred
+            r2_results.loc[f"S{test_subject}", model_name] = r2[0]
+            rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
+            plt.close()
 
-    r2_results.to_csv("../Results/GM/R2_results.csv")
-    rmse_results.to_csv("../Results/GM/RMSE_results.csv")
-    plot_models(predictions, y_true)
+        r2_results.to_csv("../Results/GM/R2_results.csv")
+        rmse_results.to_csv("../Results/GM/RMSE_results.csv")
+        plot_models(predictions, y_true, path="../Results/GM/",
+                    subject=test_subject)
+        plt.close()
