@@ -1,13 +1,15 @@
 import json
-import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn import metrics
 from functools import partial
-from Custom.WindowGenerator import WindowGenerator
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import tensorflow as tf
-from tensorflow.keras import layers, models, losses
+from sklearn import metrics
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras import layers, losses, models
+
+from Custom.WindowGenerator import WindowGenerator
 
 tf.random.set_seed(42)
 """
@@ -107,26 +109,6 @@ def create_window_generator(
 
 # #models
 def create_lstm_model(window_object):
-    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
-    # kernel_regularizer='l2', recurrent_regularizer='l2', activity_regularizer='l2')
-    custom_LSTM = partial(layers.LSTM, dropout=0.3,)
-    lstm_model = models.Sequential(
-        [
-            layers.InputLayer((window_object.input_width,
-                              window_object.features_num)),
-            # layers.BatchNormalization(),
-            # custom_LSTM(4, return_sequences=True),
-            custom_LSTM(4, return_sequences=True),
-            custom_LSTM(4, return_sequences=False),
-            layers.Dense(window_object.out_nums * window_object.label_width),
-            layers.Reshape(
-                [window_object.label_width, window_object.out_nums]),
-        ]
-    )
-    return lstm_model
-
-
-def create_lstm_gm_model(window_object):
     custom_LSTM = partial(layers.LSTM, units=4, dropout=0.3)
     lstm_model = models.Sequential(
         [
@@ -318,33 +300,24 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, f
     plt.draw()
 
 
-def plot_models(predictions: dict, y_true):
+def plot_models(predictions: dict, y_true, path: str, subject=None):
     time = [i / 20 for i in range(len(y_true))]
     # fig, ax = plt.subplots(nrows=len(predictions.keys()))
 
     for i, model_name in enumerate(predictions.keys()):
         plt.subplot(len(predictions.keys()), 1, i+1)
-        # if i == len(predictions.keys())-1:
-        #     plt.subplot(len(predictions.keys()), 1, i+1)
-        #     y_true_lable = "maesured moment"
-        #     y_pred_lable = "prediction"
-        # else:
-        #     y_true_lable = None
-        #     y_pred_lable = None
-
         plt.plot(time, -y_true, linewidth=2.5, label="measured moment")
         plt.plot(time, -predictions[model_name],
                  "r--", linewidth=2, label="prediction")
         plt.title(model_name)
-        # if i == 0:
-        #     plt.legend(["measured moment", "prediction"])
         plt.xlim((0, 9))
-        plt.xlabel("Time [s]")
         plt.ylabel("Moment [Nm/kg]")
+        plt.yticks([0, 0.5, 1, 1.5])
+        plt.ylim([-0.25, 1.52])
         plt.grid(True)
-    plt.legend(bbox_to_anchor=(1,-0.6), loc="lower right",
-                borderaxespad=0, ncol=2)
+    plt.xlabel("Time [s]")
+    plt.legend(bbox_to_anchor=(1, -0.5), loc="lower right",
+               borderaxespad=0, ncol=2)
     plt.tight_layout()
     plt.draw()
-    plt.savefig("../models_results.pdf")
-    plt.close()
+    plt.savefig(f"{path}S{subject}_models_results.pdf")
