@@ -27,12 +27,10 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
     train_set_2, val_set_2 = window_object_2.get_gm_train_val_dataset()
     train_set = window_object_1.preprocessing(train_set_1.concatenate(train_set_2),
                                               remove_nan=True, shuffle=True, batch_size=None, drop_reminder=True,)
-
     val_set = window_object_1.preprocessing(val_set_1.concatenate(val_set_2),
                                             remove_nan=True, shuffle=False, batch_size=None, drop_reminder=False,
                                             )
-
-    ##############################################################################################################
+    
     # Load and compile new model
     tf.keras.backend.clear_session()
     model = model_dic[model_name](window_object_1)
@@ -117,7 +115,7 @@ if __name__ == "__main__":
     loss_factor = 3.0  # Loss factor to prevent ankle slip
     # Window object parameters
     input_width = 15
-    shift = 3
+    shift = 2
     label_width = 1
     batch_size = 64
 

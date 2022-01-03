@@ -6,15 +6,6 @@ import tensorflow as tf
 from tensorflow import keras
 
 from Custom.models_functions import *
-from Custom.WindowGenerator import WindowGenerator
-
-K = keras.backend
-gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-gpu_index = -1
-tf.config.experimental.set_visible_devices(
-    devices=gpus[gpu_index], device_type='GPU')
-# tf.config.experimental.set_virtual_device_configuration(gpus[gpu_index], \
-# [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)])
 
 
 def train_fit(
@@ -98,10 +89,16 @@ def train_fit(
 
 
 if __name__ == "__main__":
-    tf.random.set_seed(42)
-
+    K = keras.backend
     if not tf.test.is_built_with_cuda():
         raise print("No GPU found")
+    else:
+        gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+        gpu_index = -1
+        tf.config.experimental.set_visible_devices(
+            devices=gpus[gpu_index], device_type='GPU')
+
+    tf.random.set_seed(42)
 
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
@@ -120,9 +117,9 @@ if __name__ == "__main__":
     window_generator = partial(create_window_generator, input_width=input_width, shift=shift, label_width=label_width,
                                batch_size=batch_size, features=features, add_knee=add_knee, out_labels=out_labels)
     model_dic = {}
+    model_dic["NN model"] = create_nn_model
     model_dic["LSTM model"] = create_lstm_model
     model_dic["CNN model"] = create_conv_model
-    model_dic["NN model"] = create_nn_model
 
     r2_results = pd.DataFrame(columns=model_dic.keys())
     rmse_results = pd.DataFrame(columns=model_dic.keys())
