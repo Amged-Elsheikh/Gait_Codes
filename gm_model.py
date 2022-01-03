@@ -101,7 +101,7 @@ if __name__ == "__main__":
     tf.random.set_seed(42)
 
     gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
-    gpu_index = 1
+    gpu_index = -1
     tf.config.experimental.set_visible_devices(
         devices=gpus[gpu_index], device_type="GPU")
     # Check for GPU
@@ -126,10 +126,9 @@ if __name__ == "__main__":
     # model_name = "nn_model"
     model_dic = {}
 
-    model_dic["LSTM model"] = create_lstm_model
-    # model_dic["single_lstm_model"] = create_single_lstm_model
-    model_dic["CNN model"] = create_conv_model
     model_dic["NN model"] = create_nn_gm_model
+    model_dic["CNN model"] = create_conv_model
+    model_dic["LSTM model"] = create_lstm_model
 
     # Create pandas dataframe that will have all the results
     r2_results = pd.DataFrame(columns=model_dic.keys())
@@ -152,8 +151,8 @@ if __name__ == "__main__":
             rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
             plt.close()
 
-        r2_results.to_csv("../Results/GM/R2_results.csv")
-        rmse_results.to_csv("../Results/GM/RMSE_results.csv")
         plot_models(predictions, y_true, path="../Results/GM/",
                     subject=test_subject)
-        plt.close()
+        plt.show()
+    r2_results.to_csv("../Results/GM/R2_results.csv")
+    rmse_results.to_csv("../Results/GM/RMSE_results.csv")
