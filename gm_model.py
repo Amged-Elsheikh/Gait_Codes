@@ -154,8 +154,8 @@ if __name__ == "__main__":
             rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
             plt.close()
 
-        r2_results.to_csv("../Results/GM/R2_results.csv")
-        rmse_results.to_csv("../Results/GM/RMSE_results.csv")
         plot_models(predictions, y_true, path="../Results/GM/",
                     subject=test_subject)
         plt.close()
+    r2_results.to_csv("../Results/GM/R2_results.csv")
+    rmse_results.to_csv("../Results/GM/RMSE_results.csv")
