@@ -97,6 +97,8 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
 
 if __name__ == "__main__":
     tf.random.set_seed(42)
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
 
     gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
     gpu_index = -1
@@ -115,7 +117,7 @@ if __name__ == "__main__":
     loss_factor = 3.0  # Loss factor to prevent ankle slip
     # Window object parameters
     input_width = 15
-    shift = 2
+    shift = 3
     label_width = 1
     batch_size = 64
 
@@ -145,6 +147,9 @@ if __name__ == "__main__":
                 model_name=model_name, epochs=500,
                 eval_only=True, load_best=False)
             predictions[model_name] = y_pred
+            nrmse = normalized_rmse(
+                y_true*subject_details[f"S{test_subject}"]["weight"], y_pred*subject_details[f"S{test_subject}"]["weight"])
+            print(f"NRMSE: {nrmse[0]}")
             r2_results.loc[f"S{test_subject}", model_name] = r2[0]
             rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
             plt.close()

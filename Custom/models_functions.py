@@ -231,6 +231,20 @@ def nan_rmse(y_true, y_pred):
     return np.around(error, 3), np.around(max_error, 3)
 
 
+def normalized_rmse(y_true, y_pred):
+    error = []
+    _, l = np.shape(y_true)
+    for i in range(l):
+        y_true_col = y_true[:, i]
+        y_pred_col = y_pred[:, i]
+        logic = np.isfinite(y_true_col)
+        y_true_col = y_true_col[logic]
+        y_pred_col = y_pred_col[logic]
+        nmse = np.sum(np.square(y_true_col-y_pred_col))/np.sum(np.square(y_true_col))
+        error.append(np.sqrt(nmse))
+    return np.around(error, 3)
+
+
 def custom_loss(y_true, y_pred):
     error = tf.reshape(y_true - y_pred, (-1, 1))
     error = error[~tf.math.is_nan(error)]

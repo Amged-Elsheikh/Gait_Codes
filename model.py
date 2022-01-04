@@ -123,6 +123,7 @@ if __name__ == "__main__":
 
     r2_results = pd.DataFrame(columns=model_dic.keys())
     rmse_results = pd.DataFrame(columns=model_dic.keys())
+    nrmse_results = pd.DataFrame(columns=model_dic.keys())
     predictions = {}
     # w1 = window_generator(subject="1")
     # w2 = window_generator(subject="2")
@@ -135,8 +136,12 @@ if __name__ == "__main__":
             history, y_true, y_pred, r2, rmse = train_fit(
                 subject=test_subject, tested_on=None, model_name=model_name, epochs=500, eval_only=True, load_best=False,)
             predictions[model_name] = y_pred
+            nrmse = normalized_rmse(
+                y_true*subject_details[f"S{test_subject}"]["weight"], y_pred*subject_details[f"S{test_subject}"]["weight"])
+            print(f"NRMSE: {nrmse[0]}")
             r2_results.loc[f"S{test_subject}", model_name] = r2[0]
             rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
+            nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
             # print(model_name)
         plt.close()
         plot_models(predictions, y_true,
@@ -144,3 +149,4 @@ if __name__ == "__main__":
         plt.close()
     r2_results.to_csv("../Results/indiviuals/R2_results.csv")
     rmse_results.to_csv("../Results/indiviuals/RMSE_results.csv")
+    nrmse_results.to_csv("../Results/indiviuals/NRMSE_results.csv")
