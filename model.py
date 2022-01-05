@@ -118,8 +118,8 @@ if __name__ == "__main__":
                                batch_size=batch_size, features=features, add_knee=add_knee, out_labels=out_labels)
     model_dic = {}
     model_dic["NN model"] = create_nn_model
-    model_dic["LSTM model"] = create_lstm_model
     model_dic["CNN model"] = create_conv_model
+    model_dic["LSTM model"] = create_lstm_model
 
     r2_results = pd.DataFrame(columns=model_dic.keys())
     rmse_results = pd.DataFrame(columns=model_dic.keys())
