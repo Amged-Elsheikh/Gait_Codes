@@ -165,8 +165,8 @@ def create_conv_model(window_object):
     return conv_model
 
 
-def create_nn_model(window_object):
-    custom_nn = partial(layers.Dense, units=16, activation='relu')
+def create_ff_model(window_object):
+    custom_nn = partial(layers.Dense, units=4)
     nn_model = models.Sequential(
         [
             layers.InputLayer((window_object.input_width,
@@ -175,23 +175,6 @@ def create_nn_model(window_object):
             custom_nn(),
             custom_nn(),
             custom_nn(),
-            layers.Dense(window_object.out_nums * window_object.label_width),
-            layers.Reshape(
-                [window_object.label_width, window_object.out_nums]),
-        ]
-    )
-    return nn_model
-
-
-def create_nn_gm_model(window_object):
-    nn_model = models.Sequential(
-        [
-            layers.InputLayer((window_object.input_width,
-                              window_object.features_num)),
-            layers.Flatten(),
-            layers.Dense(32),
-            layers.Dense(32),
-            layers.Dense(32),
             layers.Dense(window_object.out_nums * window_object.label_width),
             layers.Reshape(
                 [window_object.label_width, window_object.out_nums]),
@@ -200,8 +183,6 @@ def create_nn_gm_model(window_object):
     return nn_model
 
 # # Evaluation functions
-
-
 def nan_R2(y_true, y_pred):
     R2 = []
     _, l = np.shape(y_true)

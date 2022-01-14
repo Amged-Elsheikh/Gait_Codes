@@ -101,7 +101,7 @@ if __name__ == "__main__":
         subject_details = json.load(f)
 
     gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
-    gpu_index = -1
+    gpu_index = 0
     tf.config.experimental.set_visible_devices(
         devices=gpus[gpu_index], device_type="GPU")
     # Check for GPU
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     # model_name = "nn_model"
     model_dic = {}
 
-    model_dic["NN model"] = create_nn_gm_model
+    model_dic["FF model"] = create_ff_model
     model_dic["CNN model"] = create_conv_model
     model_dic["LSTM model"] = create_lstm_model
 
