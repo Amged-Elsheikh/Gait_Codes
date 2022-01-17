@@ -183,6 +183,8 @@ def create_ff_model(window_object):
     return nn_model
 
 # # Evaluation functions
+
+
 def nan_R2(y_true, y_pred):
     R2 = []
     _, l = np.shape(y_true)
@@ -221,7 +223,8 @@ def normalized_rmse(y_true, y_pred):
         logic = np.isfinite(y_true_col)
         y_true_col = y_true_col[logic]
         y_pred_col = y_pred_col[logic]
-        nmse = np.sum(np.square(y_true_col-y_pred_col))/np.sum(np.square(y_true_col))
+        nmse = np.sum(np.square(y_true_col-y_pred_col)) / \
+            np.sum(np.square(y_true_col))
         error.append(np.sqrt(nmse))
     return np.around(error, 3)
 
@@ -301,6 +304,9 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, f
 
 
 def plot_models(predictions: dict, y_true, path: str, subject=None):
+    from matplotlib import rcParams
+
+    rcParams['ps.fonttype'] = 42
     time = [i / 20 for i in range(len(y_true))]
     # fig, ax = plt.subplots(nrows=len(predictions.keys()))
     tick_size = 12
@@ -318,6 +324,7 @@ def plot_models(predictions: dict, y_true, path: str, subject=None):
         plt.yticks([0, 0.5, 1, 1.5], fontsize=tick_size)
         plt.ylim([-0.25, 1.52])
         plt.grid(True)
+        plt.axvspan(3, 5.55, alpha=0.3, color='blue')
     plt.xticks(fontsize=tick_size)
     plt.xlabel("Time [s]", fontsize=label_size)
     plt.legend(bbox_to_anchor=(1, -0.5), loc="lower right",

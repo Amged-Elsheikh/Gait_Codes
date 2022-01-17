@@ -1,12 +1,14 @@
 import json
 import os
 from functools import partial
-
+from matplotlib import rcParams
 import pandas as pd
 import tensorflow as tf
 
 from Custom.models_functions import *
 
+rcParams['pdf.fonttype'] = 42
+rcParams['ps.fonttype'] = 42
 
 def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False,):
     """
