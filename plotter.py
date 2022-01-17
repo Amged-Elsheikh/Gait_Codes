@@ -1,8 +1,11 @@
 from matplotlib import pyplot as plt
+from matplotlib import rcParams
 import json
 
 from Custom.models_functions import *
 
+rcParams['pdf.fonttype'] = 42
+rcParams['ps.fonttype'] = 42
 tick_size = 12
 label_size = 14
 title_size = 20
@@ -10,10 +13,10 @@ title_size = 20
 
 def plot_settings(i):
     if i < 3:
-        plt.ylim([-0.1, 1])
-        plt.yticks([0.00, 0.25, 0.50, 0.75, 1.00], fontsize=tick_size)
+        # plt.ylim([-0.1, 1])
+        plt.yticks([0.00, 0.25, 0.50, 0.75, 1.00, 1.25, 1.5], fontsize=tick_size)
     else:
-        plt.ylim([-0.25, 1.52])
+        # plt.ylim([-0.25, 1.52])
         plt.yticks([0, 0.5, 1, 1.5], fontsize=tick_size)
 
 
@@ -35,7 +38,7 @@ for i, col in enumerate(data.columns):
     plt.grid(True)
     if i == 3:
         data.loc[:, col] *= -1
-    plt.plot(data.index, data.loc[:, col])
+    plt.plot(data.index, data.loc[:, col], linewidth=2.5)
     plot_settings(i)
     plt.xticks([i for i in range(0, 10)], fontsize=tick_size)
     plt.xlim([0, 9])
