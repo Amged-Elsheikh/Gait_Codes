@@ -2,10 +2,14 @@ import json
 import os
 
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
 import tensorflow as tf
 from tensorflow import keras
 
 from Custom.models_functions import *
+
+rcParams['pdf.fonttype'] = 42
+rcParams['ps.fonttype'] = 42
 
 
 def train_fit(
@@ -118,8 +122,8 @@ if __name__ == "__main__":
                                batch_size=batch_size, features=features, add_knee=add_knee, out_labels=out_labels)
     model_dic = {}
     model_dic["FF model"] = create_ff_model
-    # model_dic["CNN model"] = create_conv_model
-    # model_dic["LSTM model"] = create_lstm_model
+    model_dic["CNN model"] = create_conv_model
+    model_dic["LSTM model"] = create_lstm_model
 
     r2_results = pd.DataFrame(columns=model_dic.keys())
     rmse_results = pd.DataFrame(columns=model_dic.keys())
@@ -134,7 +138,7 @@ if __name__ == "__main__":
         # Train and test new/existing models
         for model_name in model_dic.keys():
             history, y_true, y_pred, r2, rmse = train_fit(
-                subject=test_subject, tested_on=None, model_name=model_name, epochs=500, eval_only=False, load_best=False,)
+                subject=test_subject, tested_on=None, model_name=model_name, epochs=500, eval_only=True, load_best=False,)
             predictions[model_name] = y_pred
             nrmse = normalized_rmse(
                 y_true*subject_details[f"S{test_subject}"]["weight"], y_pred*subject_details[f"S{test_subject}"]["weight"])
@@ -147,6 +151,6 @@ if __name__ == "__main__":
         plot_models(predictions, y_true,
                     path=f"../Results/indiviuals/", subject=test_subject)
         plt.close()
-    r2_results.to_csv("../Results/indiviuals/R2_results.csv")
-    rmse_results.to_csv("../Results/indiviuals/RMSE_results.csv")
-    nrmse_results.to_csv("../Results/indiviuals/NRMSE_results.csv")
+    # r2_results.to_csv("../Results/indiviuals/R2_results.csv")
+    # rmse_results.to_csv("../Results/indiviuals/RMSE_results.csv")
+    # nrmse_results.to_csv("../Results/indiviuals/NRMSE_results.csv")
