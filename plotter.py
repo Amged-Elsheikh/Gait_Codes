@@ -13,7 +13,7 @@ title_size = 20
 
 def plot_settings(i):
     if i < 3:
-        # plt.ylim([-0.1, 1])
+        plt.ylim([-0.1, 1.51])
         plt.yticks([0.00, 0.25, 0.50, 0.75, 1.00, 1.25, 1.5], fontsize=tick_size)
     else:
         # plt.ylim([-0.25, 1.52])
@@ -25,7 +25,7 @@ with open("subject_details.json", "r") as f:
 
 data = create_window_generator("04").test_df
 # print(data.describe())
-labels = ["(a) TA", "(b) GM", "(c) SOL", "(d) Ankle moment"]
+labels = ["(a) TA RMS magnitude", "(b) GM RMS magnitude", "(c) SOL RMS magnitude", "(d) Ankle moment"]
 sensors = [f"DEMG{x}_RMS" for x in [1, 3, 5]]
 sensors.append("Left ankle moment")
 data = data.loc[:, sensors]
