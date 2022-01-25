@@ -1,51 +1,38 @@
+"""This code will create each subject dataset. the dataset will contains on EMG features, Joints kinematics and kinetics.
+"""
 import pandas as pd
 import numpy as np
 import json
 
 
-def load_IK(ik_file):
+def load_IK(ik_file: str) -> pd.DataFrame:
     """
     Load knee and ankle joints angles
-    ik_file: full extension name
+    ik_file (str): full directory name
     """
     IK = pd.read_csv(ik_file, header=8, sep='\t', usecols=[0, 10, 11, 17, 18])
     return IK
 
 
-def load_ID(id_file):
+def load_ID(id_file: str) -> pd.DataFrame:
     """
     load knee and ankle joints moments
-    id_file: full extension name
+    id_file (str): full directory name
     """
     ID = pd.read_csv(id_file, header=6, sep='\t', usecols=[0, 16, 17, 18, 19])
     return ID_col_arranger(ID)  # Return re-arranged columns
 
 
-def load_time_intervals(periods_file):
+def load_time_intervals(periods_file: str) -> pd.DataFrame:
     """
     Load recording periods.
-    periods_file: full name extension
+    periods_file (str): full directory name
     """
     periods = pd.read_csv(periods_file, index_col="time")
     return periods
 
 
-def merge_joints(IK, ID, periods):
-    # Merge kinematics and kinetics data
-    joints_data = pd.merge(IK, ID, on='time', how='inner')
-    # Assert no data loss
-    assert len(joints_data) == len(ID) == len(IK)
-    # Merge the columns that tells when to make measurements (record periods)
-    joints_data_with_events = pd.merge(
-        joints_data, periods, on='time', how='inner')
-    # Assert no data lost
-    # assert len(joints_data_with_events) == len(joints_data)
-    # Reset time to zero to match EMG
-    joints_data_with_events = reset_time(joints_data_with_events)
-    return joints_data_with_events
-
-
-def load_features(features_file):
+def load_features(features_file: str) -> pd.DataFrame:
     """
     features_file: .csv file
     """
@@ -53,7 +40,29 @@ def load_features(features_file):
     return features
 
 
-def merge_IO(features, joints_data):
+def merge_joints(IK: pd.DataFrame, ID: pd.DataFrame, periods: pd.DataFrame) -> pd.DataFrame:
+    """Join kinematics and kinetics data into a single pandas dataframe along with record periods dataframe which used to filter the dataset by removing all periods where ID solution was not available (no GRF data)
+    """
+    # Merge kinematics and kinetics data
+    joints_data = pd.merge(IK, ID, on='time', how='inner')
+    # Assert no data loss
+    assert len(joints_data) == len(ID) == len(IK)
+    # Merge the columns that tells when to make measurements (record periods)
+    joints_data_with_events = pd.merge(
+        joints_data, periods, on='time', how='inner')
+    # Reset time to zero to match EMG
+    joints_data_with_events = reset_time(joints_data_with_events)
+    return joints_data_with_events
+
+
+def reset_time(data: pd.DataFrame) -> pd.DataFrame:
+    start_time = data['time'].min()
+    data['time'] = data['time'].apply(lambda x: x-start_time)
+    data['time'] = np.around(data['time'], 3)
+    return data
+
+
+def merge_IO(features: pd.DataFrame, joints_data: pd.DataFrame) -> pd.DataFrame:
     """
     downsampling is hold while merging by removing points
     """
@@ -64,7 +73,7 @@ def merge_IO(features, joints_data):
     return Dataset
 
 
-def ID_col_arranger(ID):
+def ID_col_arranger(ID: pd.DataFrame) -> pd.DataFrame:
     """
     Arrange ID data columns to be:
         ['time', 'knee_angle_r_moment', 'knee_angle_l_moment',
@@ -74,29 +83,17 @@ def ID_col_arranger(ID):
     return ID[[col[0], col[1], col[3], col[2], col[4]]]
 
 
-def reset_time(data):
-    start_time = data['time'].min()
-    data['time'] = data['time'].apply(lambda x: x-start_time)
-    data['time'] = np.around(data['time'], 3)
-    return data
-
-
-new_labels = {'ankle_angle_l', 'knee_angle_r_moment', 'ankle_angle_r_moment',
-              'knee_angle_l_moment', 'ankle_angle_l_moment', 'Unnamed: 0', 'left_side', 'right_side'}
-# %%
-
-
-def get_dataset(subject=None):
+def get_dataset(subject=None) -> None:
+    # If subject number wasn't provided ask the user to manually input it
     if subject == None:
         subject = input("Please write subject number in a format XX: ")
-
+    # Load the subject details
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
-
-    date = subject_details[f"S{subject}"]["date"]
-    # Get trials names
+        date = subject_details[f"S{subject}"]["date"]
+    # Experiment trials names
     files = ['train_01', 'train_02', 'val', 'test']
-
+    ########################### Get I/O directories ###########################
     ik_path = f"../OpenSim/S{subject}/{date}/IK/"
     IK_files = list(map(lambda x: f"{ik_path}S{subject}_{x}_IK.mot", files))
 
@@ -114,25 +111,29 @@ def get_dataset(subject=None):
     output_folder = f"../Dataset/S{subject}/"
     output_files = list(
         map(lambda x: f"{output_folder}{x}_dataset.csv", files))
-
+    ########################### Loop in each trial ###########################
     for ik_file, id_file, periods_file, features_file, output_name\
             in zip(IK_files, ID_files, periods_files, Features_files, output_files):
-
+        # Load IK data
         IK = load_IK(ik_file)
+        # Load ID data
         ID = load_ID(id_file)
+        # Load record interval data
         periods = load_time_intervals(periods_file)
+        # Load EMG features
         features = load_features(features_file)
+        # Merge IK, ID & record intervals together to create joint's dataset
         joints_data = merge_joints(IK, ID, periods)
+        # Merge EMG features with joints data and down sample joints data to match the EMG features
         Dataset = merge_IO(features, joints_data)
+        # Remove Kinetics data that are not in the recording period and then remove the periods columns
         Dataset.loc[Dataset['left_side'] == False, [
             'knee_angle_l_moment', 'ankle_angle_l_moment']] = np.nan
-
         Dataset.loc[Dataset['right_side'] == False, [
             'knee_angle_r_moment', 'ankle_angle_r_moment']] = np.nan
-
         Dataset.drop(columns=['left_side', 'right_side'],
                      inplace=True)  # Drop periods columns
-
+        # Rename column and save the dataset
         new_col = {'knee_angle_r': "Right knee angle",
                    'ankle_angle_r': 'Right ankle angle',
                    'knee_angle_l': "Left knee angle",
@@ -141,7 +142,6 @@ def get_dataset(subject=None):
                    'knee_angle_r_moment': "Right knee moment",
                    'ankle_angle_l_moment': "Left ankle moment",
                    'knee_angle_l_moment': "Left knee moment"}
-
         Dataset.rename(columns=new_col, inplace=True)
         Dataset.to_csv(output_name)
 
