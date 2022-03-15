@@ -103,7 +103,7 @@ if __name__ == "__main__":
         subject_details = json.load(f)
 
     gpus = tf.config.experimental.list_physical_devices(device_type="GPU")
-    gpu_index = 0
+    gpu_index = -1
     tf.config.experimental.set_visible_devices(
         devices=gpus[gpu_index], device_type="GPU")
     # Check for GPU
@@ -147,7 +147,7 @@ if __name__ == "__main__":
             history, y_true, y_pred, r2, rmse = train_fit_gm(
                 subject=train_subjects, test_subject=test_subject,
                 model_name=model_name, epochs=500,
-                eval_only=True, load_best=False)
+                eval_only=False, load_best=False)
             predictions[model_name] = y_pred
             nrmse = normalized_rmse(
                 y_true*subject_details[f"S{test_subject}"]["weight"], y_pred*subject_details[f"S{test_subject}"]["weight"])
