@@ -70,12 +70,12 @@ def bandpass_filter(emg, order=4, lowband=20, highband=450):
     return signal.filtfilt(b, a, emg)
 
 
-def apply_notch_filter(data):
+def apply_notch_filter(emg):
     fs = 1/0.0009  # sampling frequancy in Hz
     f0 = 50  # Notched frequancy
     Q = 30  # Quality factor
     b, a = signal.iirnotch(f0, Q, fs)
-    return signal.filtfilt(b, a, data)
+    return signal.filtfilt(b, a, emg)
 
 
 def remove_outlier(data, detect_factor=20, remove_factor=15):
@@ -109,55 +109,59 @@ def wave_length(data):
     return np.sum(abs(np.diff(data)))
 
 
-def features_functions(DEMG: pd.DataFrame):
-    global WINDOW_LENGTH, SLIDING_WINDOW_STRIDE
-    dataset = pd.DataFrame()
+def features_functions(DEMG):
+    # initialize a collector to collect the features from each sensor
+    features_collector = {}
+    for EMG_num in range(1, len(DEMG.columns)+1):
+        dataset = pd.DataFrame(columns=[f'DEMG{EMG_num}_ZC',
+                                        f'DEMG{EMG_num}_RMS',
+                                        f'DEMG{EMG_num}_MAV',
+                                        f'DEMG{EMG_num}_AR1',
+                                        f'DEMG{EMG_num}_AR2',
+                                        f'DEMG{EMG_num}_AR3',
+                                        f'DEMG{EMG_num}_AR4',
+                                        f'DEMG{EMG_num}_AR5',
+                                        f'DEMG{EMG_num}_AR6'])
+        features_collector[EMG_num] = dataset
+    
     time_limit = max(DEMG.index)
     print(f"time_limit: {time_limit}s")
-    for EMG_num in range(1, len(DEMG.columns)+1):
-        start = 0
-        end = WINDOW_LENGTH
-        coeff = []
-        MAV = []
-        RMS = []
-        ZC = []
-        EMG_label = f"sensor {EMG_num}"
-        sensor_data = DEMG[EMG_label]
-        # Extract features
-        while (end < time_limit):
-            window_data = sensor_data[(DEMG.index >= start) & (
-                DEMG.index < end)].to_numpy()
-            # Get the AR coefficients
-            coeff.append(get_AR_coeffs(window_data))
-            # Get the MAV
-            MAV.append(get_MAV(window_data))
-            # Get RMS
-            RMS.append(get_RMS(window_data))
-            # #Get Zero-Crossing
-            ZC.append(zero_crossing(window_data))
-            # Update window
-            start += SLIDING_WINDOW_STRIDE
-            end += SLIDING_WINDOW_STRIDE
+    start = 0
+    end = WINDOW_LENGTH
+    data_per_window = 1111.11*end
+    # Extract features
+    while (end < time_limit):
+        # Take each sensor individually
+        for EMG_num in range(1, len(DEMG.columns)+1):
+            sensor_data = DEMG[f"sensor {EMG_num}"]
+            window_data = sensor_data[(DEMG.index >= start)
+                                      & (DEMG.index < end)].to_numpy()
+            # # discard the last window
+            if len(window_data)>=data_per_window-1:
+                # #Get Zero-Crossing
+                ZC = (zero_crossing(window_data))
+                # Get RMS
+                RMS = (get_RMS(window_data))
+                # Get the MAV
+                MAV = (get_MAV(window_data))
+                # Get the AR coefficients
+                coeff = (get_AR_coeffs(window_data))
+                # Features
+                features = [ZC, RMS, MAV]
+                features.extend(coeff[1:])
+                # update dataset
+                features_collector[EMG_num].loc[len(
+                    features_collector[EMG_num].index)] = features
+        # Update window
+        start += SLIDING_WINDOW_STRIDE
+        end += SLIDING_WINDOW_STRIDE
 
-        coeff = np.array(coeff)
-        ZC = np.array(ZC)
-        RMS = np.array(RMS)
-        # MAV = np.array(MAV)
+    dataset = pd.concat(
+        [features for features in features_collector.values()], axis=1)
 
-        dataset_temp = pd.DataFrame({f'DEMG{EMG_num}_ZC': ZC,
-                                     f'DEMG{EMG_num}_RMS': RMS,
-                                     f'DEMG{EMG_num}_MAV': MAV,
-                                     f'DEMG{EMG_num}_AR1': coeff[:, 1],
-                                     f'DEMG{EMG_num}_AR2': coeff[:, 2],
-                                     f'DEMG{EMG_num}_AR3': coeff[:, 3],
-                                     f'DEMG{EMG_num}_AR4': coeff[:, 4],
-                                     f'DEMG{EMG_num}_AR5': coeff[:, 5],
-                                     f'DEMG{EMG_num}_AR6': coeff[:, 6]})
+    dataset['time'] = [np.around(SLIDING_WINDOW_STRIDE*i + SLIDING_WINDOW_STRIDE, 3)
+                       for i in range(len(dataset))]
 
-        dataset = pd.concat([dataset, dataset_temp], axis=1)
-#         print(f"{EMG_label} done")
-
-    dataset['time'] = [np.around(SLIDING_WINDOW_STRIDE*i, 3) for i in range(len(dataset))]
     dataset.set_index("time", inplace=True)
     # dataset.describe()
     return dataset
@@ -233,6 +237,8 @@ if __name__ == "__main__":
     sensors_num = 6  # Very important for loading the data
 
     for s in ["01", "02", "04"]:
+        if s != "01":
+            continue
         emg_to_features(s, remove_artifacts=True)
         try:
             # If all subject data files exisit, the dataset will be automatically generated
@@ -241,4 +247,5 @@ if __name__ == "__main__":
             print("Dataset file been updated successfully.")
         except:
             pass
+
         plt.close()
