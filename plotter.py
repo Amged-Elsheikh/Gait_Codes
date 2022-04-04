@@ -25,7 +25,8 @@ with open("subject_details.json", "r") as f:
 
 data = create_window_generator("04").test_df
 # print(data.describe())
-labels = ["(a) TA RMS magnitude", "(b) GM RMS magnitude", "(c) SOL RMS magnitude", "(d) Ankle moment"]
+labels = ["Tibialis Anterior", "Gastrocnemius Medialis", 
+                            "Soleus", "Ankle moment"]
 sensors = [f"DEMG{x}_RMS" for x in [1, 3, 5]]
 sensors.append("Left ankle moment")
 data = data.loc[:, sensors]
@@ -41,9 +42,10 @@ for i, col in enumerate(data.columns):
     plt.plot(data.index, data.loc[:, col], linewidth=2.5)
     plot_settings(i)
     plt.xticks([i for i in range(0, 10)], fontsize=tick_size)
-    plt.xlim([0, 9])
+    plt.xlim([0, 10])
     plt.axvspan(0.7, 2.4, alpha=0.3, color='red')
     plt.axvspan(7.15, 8.75, alpha=0.3, color='red')
+    plt.ylabel("Magnitude")
     plt.title(labels[i], fontsize=title_size)
 plt.xlabel("time [s]", fontsize=label_size)
 plt.ylabel("N.m/kg", fontsize=label_size)
