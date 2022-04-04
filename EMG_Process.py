@@ -15,8 +15,9 @@ from warnings import simplefilter
 
 # Setups
 simplefilter(action='ignore', category=FutureWarning)
-pd.set_option('display.max_columns', None)
-plt.rcParams["figure.figsize"] = [14, 10]
+
+WINDOW_LENGTH = 0.25
+SLIDING_WINDOW_STRIDE = 0.05
 
 
 def get_emg_files(subject: str, inputs_path: str, outputs_path: str, trials: list) -> str:
@@ -50,7 +51,7 @@ def load_emg_data(subject: str, emg_file: str, trial: str) -> pd.DataFrame:
 
 def process_emg_signal(emg: pd.DataFrame, remove_artifacts=True) -> pd.DataFrame:
     # filter the signals
-    filtered_emg = emg.apply(apply_filter)
+    filtered_emg = emg.apply(bandpass_filter)
     filtered_emg = filtered_emg.apply(apply_notch_filter)
     # Ensure signal has zero mean
     filtered_emg = filtered_emg-filtered_emg.mean()
@@ -61,7 +62,7 @@ def process_emg_signal(emg: pd.DataFrame, remove_artifacts=True) -> pd.DataFrame
     return filtered_emg
 
 
-def apply_filter(emg, order=4, lowband=20, highband=450):
+def bandpass_filter(emg, order=4, lowband=20, highband=450):
     fs = 1/0.0009  # Hz
     low_pass = lowband/(fs*0.5)
     hig_pass = highband/(fs*0.5)
@@ -108,7 +109,7 @@ def wave_length(data):
     return np.sum(abs(np.diff(data)))
 
 
-def get_features(DEMG):
+def features_functions(DEMG):
     # initialize a collector to collect the features from each sensor
     features_collector = {}
     for EMG_num in range(1, len(DEMG.columns)+1):
@@ -122,11 +123,11 @@ def get_features(DEMG):
                                         f'DEMG{EMG_num}_AR5',
                                         f'DEMG{EMG_num}_AR6'])
         features_collector[EMG_num] = dataset
-    step = 0.05
+    
     time_limit = max(DEMG.index)
     print(f"time_limit: {time_limit}s")
     start = 0
-    end = 0.25
+    end = WINDOW_LENGTH
     data_per_window = 1111.11*end
     # Extract features
     while (end < time_limit):
@@ -152,14 +153,15 @@ def get_features(DEMG):
                 features_collector[EMG_num].loc[len(
                     features_collector[EMG_num].index)] = features
         # Update window
-        start += step
-        end += step
+        start += SLIDING_WINDOW_STRIDE
+        end += SLIDING_WINDOW_STRIDE
 
     dataset = pd.concat(
         [features for features in features_collector.values()], axis=1)
 
-    dataset['time'] = [np.around(step*i + step, 3)
+    dataset['time'] = [np.around(SLIDING_WINDOW_STRIDE*i + SLIDING_WINDOW_STRIDE, 3)
                        for i in range(len(dataset))]
+
     dataset.set_index("time", inplace=True)
     # dataset.describe()
     return dataset
@@ -208,7 +210,7 @@ def emg_to_features(subject=None, remove_artifacts=True):
         # preprocess the data
         filtered_emg = process_emg_signal(emg, remove_artifacts)
         # Get features
-        dataset = get_features(filtered_emg)
+        dataset = features_functions(filtered_emg)
         # save dataset
         dataset.to_csv(output_file)
         # Plot data
@@ -216,6 +218,9 @@ def emg_to_features(subject=None, remove_artifacts=True):
 
 
 if __name__ == "__main__":
+    pd.set_option('display.max_columns', None)
+    plt.rcParams["figure.figsize"] = [14, 10]
+
     with open("subject_details.json", "r") as file:
         subject_details = json.load(file)
 
@@ -225,11 +230,11 @@ if __name__ == "__main__":
         if s != "01":
             continue
         emg_to_features(s, remove_artifacts=True)
-        # try:
-        #     # If all subject data files exisit, the dataset will be automatically generated
-        #     from Dataset_generator import *
-        #     get_dataset(s)
-        # except:
-        #     pass
+        try:
+            # If all subject data files exisit, the dataset will be automatically generated
+            from Dataset_generator import *
+            get_dataset(s)
+        except:
+            pass
 
         plt.close()
