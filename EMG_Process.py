@@ -163,16 +163,26 @@ def features_functions(DEMG: pd.DataFrame):
     return dataset
 
 
-def plot_all_emg(emg, file_name=None):
-    m = 1  # number of columns
-    n = int(len(emg.columns)/2)  # number of raws
+def plot_all_emg(emg, plot_time_range=None, file_name=None):
     plt.figure(file_name)
     muscles = ["Tibialis Anterior", "Gastrocnemius Medialis", "Soleus"]
+    # number of columns
+    m = 1 
+    # number of raws
+    n = int(len(muscles))
+    if plot_time_range == None:
+        plot_time_range = (emg.index[0], emg.index[-1])
+    start = plot_time_range[0]
+    end = plot_time_range[1]
+
     for i in range(n):
         plt.subplot(n, m, i+1)
         plt.plot(emg.index, emg.iloc[:, 2*i], emg.index, emg.iloc[:, 2*i+1])
         plt.title(muscles[i])
-        plt.xlim((emg.index[0], emg.index[-1]+0.01))
+        plt.xlim((start, end+0.01))
+        plt.ylabel("Magnitude")
+        if i == 0:
+            plt.legend(["Left", "Right"], loc="upper right")
     plt.xlabel("Time [s]")
     plt.suptitle(file_name)
     plt.tight_layout()
@@ -182,7 +192,7 @@ def plot_all_emg(emg, file_name=None):
 def plot_RMS(dataset, emg_file):
     RMS_columns = [f'DEMG{i+1}_RMS' for i in range(sensors_num)]
     RMS_data = dataset[RMS_columns]
-    plot_all_emg(RMS_data, emg_file)
+    plot_all_emg(RMS_data, None, emg_file)
 
 
 def emg_to_features(subject=None, remove_artifacts=True):
@@ -228,6 +238,7 @@ if __name__ == "__main__":
             # If all subject data files exisit, the dataset will be automatically generated
             from Dataset_generator import *
             get_dataset(s)
+            print("Dataset file been updated successfully.")
         except:
             pass
         plt.close()
