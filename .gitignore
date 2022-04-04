@@ -1,3 +1,7 @@
 __pycache__
 pycache
 Tringo
+stream_EMG.py
+live_ankle_data.csv
+online_gait.py
+live_plot.py
