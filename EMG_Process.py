@@ -237,8 +237,6 @@ if __name__ == "__main__":
     sensors_num = 6  # Very important for loading the data
 
     for s in ["01", "02", "04"]:
-        if s != "01":
-            continue
         emg_to_features(s, remove_artifacts=True)
         try:
             # If all subject data files exisit, the dataset will be automatically generated
