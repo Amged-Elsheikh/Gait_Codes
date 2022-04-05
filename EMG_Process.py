@@ -159,7 +159,7 @@ def features_functions(DEMG):
     dataset = pd.concat(
         [features for features in features_collector.values()], axis=1)
 
-    dataset['time'] = [np.around(SLIDING_WINDOW_STRIDE*i + SLIDING_WINDOW_STRIDE, 3)
+    dataset['time'] = [np.around(SLIDING_WINDOW_STRIDE*i + WINDOW_LENGTH, 3)
                        for i in range(len(dataset))]
 
     dataset.set_index("time", inplace=True)
