@@ -38,10 +38,10 @@ class WindowGenerator:
                 break
         # Get left and right side columns names
         inputs_col = train_01_df.columns[:-8].values
-        sensors_num = (len(inputs_col) // self.features_per_sensor) - 1
+        sensors_num = (len(inputs_col) // self.features_per_sensor) - 1 
         self.left_side_col = []
         self.right_side_col = []
-        for i in range(sensors_num // 2):
+        for i in range((sensors_num // 2)-1): # Remove SOL also
             self.left_side_col.extend(
                 inputs_col[
                     self.features_per_sensor * 2 * i: self.features_per_sensor * 2 * i

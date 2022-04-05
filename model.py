@@ -98,7 +98,7 @@ if __name__ == "__main__":
         raise print("No GPU found")
     else:
         gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-        gpu_index = -1
+        gpu_index = 0
         tf.config.experimental.set_visible_devices(
             devices=gpus[gpu_index], device_type='GPU')
 
