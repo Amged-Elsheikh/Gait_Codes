@@ -197,8 +197,7 @@ def plot_all_emg(emg, plot_time_range=None, file_name=None):
 
 
 def plot_RMS(dataset, emg_file):
-    RMS_columns = [f'DEMG{i+1}_RMS' for i in range(sensors_num)]
-    RMS_data = dataset[RMS_columns]
+    RMS_data = dataset.filter(regex="RMS")
     plot_all_emg(RMS_data, None, emg_file)
 
 
@@ -224,7 +223,7 @@ def emg_to_features(subject=None):
         # save dataset
         dataset.to_csv(output_file)
         # Plot data
-        # plot_RMS(dataset, emg_file)
+        plot_RMS(dataset, emg_file)
 
 
 # %%
@@ -239,12 +238,12 @@ if __name__ == "__main__":
 
     for s in ["01","02", "04"]:
         emg_to_features(s)
-        # try:
-        #     # If all subject data files exisit, the dataset will be automatically generated
-        #     from Dataset_generator import *
-        #     get_dataset(s)
-        #     print("Dataset file been updated successfully.")
-        # except:
-        #     pass
+        try:
+            # If all subject data files exisit, the dataset will be automatically generated/updated
+            from Dataset_generator import *
+            get_dataset(s)
+            print("Dataset file been updated successfully.")
+        except:
+            pass
 
-        plt.close()
+    plt.show()
