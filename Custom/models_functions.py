@@ -9,50 +9,13 @@ from sklearn import metrics
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras import layers, losses, models
 
-from Custom.WindowGenerator import WindowGenerator
+from Custom.OneSideWindowGenerator import WindowGenerator
+from Custom.DataHandler import DataHandler
 
 tf.random.set_seed(42)
 """
 This python file will contains custm function for preparing models, tf models, custom losses and custom evaluation functions.
 """
-
-# # Data preparation
-
-
-def scale_function(data, weight, features_scaler, angle_scaler):
-    """This function will scale the dataset, if you do not want to scale something, set it's value to None.
-
-    Args:
-        data ([pandas dataframe]): [The data columns are arranged as fellow: EMG features, angles and moments]
-        weight ([float or None]): [subject weight. If None, no scale will be performed.]
-        features_scaler ([sci-kit learn scaler]): [Scale the features. Use MinMax scaler. If None, no scale will be performed.]
-        angle_scaler ([sci-kit learn scaler]): [Scale the angles. Use MinMax scaler. If None, no scale will be performed.]
-    """
-    # Scale moments
-    if weight:
-        data.iloc[:, -4:] = data.iloc[:, -4:] / weight
-    # Scale features
-    if features_scaler:
-        data.iloc[:, :-8] = features_scaler.transform(data.iloc[:, :-8])
-    # Scale angles
-    if angle_scaler:
-        columns = data.columns[-8:-4]
-        data[columns] = angle_scaler.transform(data[columns])
-    return
-
-
-def choose_features(data, features=["RMS"]):
-    new_columns = []
-    for col in data.columns:
-        if "DEMG" in col:  # Confirm the column is a feature column
-            for feature in features:
-                if feature.lower() in col.lower():
-                    new_columns.append(col)
-                    continue
-        else:  # append all labels
-            new_columns.append(col)
-    return data[new_columns]
-
 # # Window generator creation function
 
 
@@ -63,47 +26,11 @@ def create_window_generator(
         subject = input("Please input subject number in XX format: ")
     if len(subject) == 1:
         subject = "0" + subject
-    # #Get subject weight.
-    with open("subject_details.json", "r") as f:
-        subject_details = json.load(f)
-    w = subject_details[f"S{subject}"]["weight"]
-    # #Get trials directory
-    trials = ["train_01", "train_02", "val", "test"]
-    trials = list(
-        map(lambda x: f"../Dataset/S{subject}/{x}_dataset.csv", trials))
-    # #Load data
-    train_01_df = pd.read_csv(trials[0], index_col="time")
-    train_02_df = pd.read_csv(trials[1], index_col="time")
-    val_df = pd.read_csv(trials[2], index_col="time")
-    test_df = pd.read_csv(trials[3], index_col="time")
-    # #Prepare scalers
-    features_scaler = MinMaxScaler(feature_range=(0, 1))
-    features_scaler.fit(train_01_df.dropna().iloc[:100, :-8])
-    angle_scaler = MinMaxScaler(feature_range=(0, 1))
-    angle_scaler.fit(train_01_df.dropna().iloc[:100, -8:-4])
-    # #Scale the dataset
-    for data in [train_01_df, train_02_df, val_df, test_df]:
-        data = scale_function(
-            data, weight=w, features_scaler=features_scaler, angle_scaler=angle_scaler
-        )
-
-    train_01_df = choose_features(train_01_df, features=features)
-    train_02_df = choose_features(train_02_df, features=features)
-    val_df = choose_features(val_df, features=features)
-    test_df = choose_features(test_df, features=features)
+    # Get subject weight.
+    dataHandler = DataHandler(subject, features, add_knee, out_labels)
     # #Create Window object
-    window_object = WindowGenerator(
-        train_01_df,
-        train_02_df,
-        val_df,
-        test_df,
-        input_width=input_width,
-        shift=shift,
-        label_width=label_width,
-        batch_size=batch_size,
-        add_knee=add_knee,
-        out_labels=out_labels,
-    )
+    window_object = WindowGenerator(dataHandler, input_width,
+                                    label_width, shift, batch_size)
     return window_object
 
 

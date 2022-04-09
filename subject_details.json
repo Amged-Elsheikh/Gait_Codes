@@ -69,14 +69,31 @@
         "weight": 55.4,
 		"age":23,
 		"height":163,
-        "delay": {"train_01":[13,13],
-                  "train_02":[16,16],
-                  "val":[5,5],
+        "delay": {"train_01":[12,12],
+                  "train_02":[14,14],
+                  "val":[3,3],
                   "test":[4,4]},
 
         "emg_sync": {"train_01":{"start":0, "length":0},
                      "train_02":{"start":0, "length":0},
                      "val":{"start":0, "length":0},
                      "test":{"start":0, "length":0}}
-    }
+    },
+    "S06": {
+        "date": 20220406,
+        "name": "Koseki",
+        "weight": 67,
+		"age":22,
+		"height":180,
+        "delay": {"train_01":[3],
+                  "train_02":[5],
+                  "val":[6],
+                  "test":[9]},
+
+        "emg_sync": {"train_01":{"start":7.27, "length":187},
+                     "train_02":{"start":7.37, "length":173},
+                     "val":{"start":5.48, "length":79},
+                     "test":{"start":6.30, "length":67}}
+        }
 }
+

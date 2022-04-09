@@ -10,7 +10,7 @@ def load_IK(ik_file: str) -> pd.DataFrame:
     Load knee and ankle joints angles
     ik_file (str): full directory name
     """
-    IK = pd.read_csv(ik_file, header=8, sep='\t', usecols=[0, 10, 11, 17, 18])
+    IK = pd.read_csv(ik_file, header=8, sep='\t', usecols=[0, 17, 18])
     return IK
 
 
@@ -19,7 +19,7 @@ def load_ID(id_file: str) -> pd.DataFrame:
     load knee and ankle joints moments
     id_file (str): full directory name
     """
-    ID = pd.read_csv(id_file, header=6, sep='\t', usecols=[0, 16, 17, 18, 19])
+    ID = pd.read_csv(id_file, header=6, sep='\t', usecols=[0, 17, 19])
     return ID_col_arranger(ID)  # Return re-arranged columns
 
 
@@ -45,8 +45,6 @@ def merge_joints(IK: pd.DataFrame, ID: pd.DataFrame, periods: pd.DataFrame) -> p
     """
     # Merge kinematics and kinetics data
     joints_data = pd.merge(IK, ID, on='time', how='inner')
-    # Assert no data loss
-    assert len(joints_data) == len(ID) == len(IK)
     # Merge the columns that tells when to make measurements (record periods)
     joints_data_with_events = pd.merge(
         joints_data, periods, on='time', how='inner')
@@ -129,19 +127,12 @@ def get_dataset(subject=None) -> None:
         # Remove Kinetics data that are not in the recording period and then remove the periods columns
         Dataset.loc[Dataset['left_side'] == False, [
             'knee_angle_l_moment', 'ankle_angle_l_moment']] = np.nan
-        Dataset.loc[Dataset['right_side'] == False, [
-            'knee_angle_r_moment', 'ankle_angle_r_moment']] = np.nan
-        Dataset.drop(columns=['left_side', 'right_side'],
-                     inplace=True)  # Drop periods columns
+        Dataset.drop(columns=['left_side'], inplace=True)  # Drop periods columns
         # Rename column and save the dataset
-        new_col = {'knee_angle_r': "Right knee angle",
-                   'ankle_angle_r': 'Right ankle angle',
-                   'knee_angle_l': "Left knee angle",
-                   'ankle_angle_l': 'Left ankle angle',
-                   'ankle_angle_r_moment': "Right ankle moment",
-                   'knee_angle_r_moment': "Right knee moment",
-                   'ankle_angle_l_moment': "Left ankle moment",
-                   'knee_angle_l_moment': "Left knee moment"}
+        new_col = {'knee_angle_l': "knee angle", # Test as input
+                   'ankle_angle_l': 'ankle angle', # will not be used
+                   'ankle_angle_l_moment': "ankle moment",
+                   'knee_angle_l_moment': "knee moment"}
         Dataset.rename(columns=new_col, inplace=True)
         Dataset.to_csv(output_name)
 

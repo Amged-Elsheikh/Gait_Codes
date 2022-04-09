@@ -25,10 +25,9 @@ def train_fit(
     if tested_on == None:
         tested_on = subject
 
-    w = subject_details[f"S{subject}"]["weight"]
     # Get all dataset
     train_set, val_set, _ = window_object.make_dataset()
-    ##############################################################################################################
+    ############################################################################
     # Load and compile new model
     K.clear_session()
     model = model_dic[model_name](window_object)
@@ -72,7 +71,7 @@ def train_fit(
     ##############################################################################################################
     # Get predictions and real values
     window_object = window_generator(tested_on)
-    _, _, test_set = window_object.make_dataset()
+    _, _, test_set = window_object.evaluation_set
     y_pred = model.predict(test_set)
     if len(y_pred.shape) == 3:
         # Get the last time step and reduce output dimenions to two
@@ -118,7 +117,9 @@ if __name__ == "__main__":
     label_width = 1
     batch_size = 64
 
-    window_generator = partial(create_window_generator, input_width=input_width, shift=shift, label_width=label_width,
+    window_generator = partial(create_window_generator,
+                               input_width=input_width, shift=shift,
+                               label_width=label_width,
                                batch_size=batch_size, features=features, add_knee=add_knee, out_labels=out_labels)
     model_dic = {}
     model_dic["FF model"] = create_ff_model
@@ -137,7 +138,7 @@ if __name__ == "__main__":
     for test_subject in ["01", "02", "04"]:
         # Train and test new/existing models
         for model_name in model_dic.keys():
-            
+
             history, y_true, y_pred, r2, rmse = train_fit(
                 subject=test_subject, tested_on=None, model_name=model_name, epochs=500, eval_only=False, load_best=False,)
 

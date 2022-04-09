@@ -236,14 +236,14 @@ if __name__ == "__main__":
 
     sensors_num = 6
 
-    for s in ["01","02", "04"]:
-        emg_to_features(s)
-        try:
-            # If all subject data files exisit, the dataset will be automatically generated/updated
-            from Dataset_generator import *
-            get_dataset(s)
-            print("Dataset file been updated successfully.")
-        except:
-            pass
+    # for s in ["01","02", "04"]:
+    emg_to_features("06")
+        # try:
+        #     # If all subject data files exisit, the dataset will be automatically generated/updated
+        #     from Dataset_generator import *
+        #     get_dataset(s)
+        #     print("Dataset file been updated successfully.")
+        # except:
+        #     pass
 
-    plt.show()
+    # plt.show()
