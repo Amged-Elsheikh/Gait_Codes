@@ -176,7 +176,7 @@ def save_force_data(force_data, output_path, output_name):
         os.remove(output_file)
     force_data.to_csv(output_file,  sep='\t', index=False)
     nRows = len(force_data)  # end_time - start_time + 1
-    nColumns = 19
+    nColumns = 10
 
     with open(output_file, "r+") as f:
         old = f.read()  # read everything in the file
