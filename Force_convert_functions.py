@@ -13,10 +13,6 @@ def get_output_name(pair):
     return re.sub("_forceplate_[1|2].csv", "_grf.sto", pair)
 
 
-def read_data(path):
-    return pd.read_csv(path, header=31)
-
-
 def system_match(data_L):
     """
     Match opti-track and force plates axes.
@@ -46,7 +42,7 @@ def remove_system_gap(data_L):
     In some cases force plates stop recording and send only zeros. This function will\\
         first set these values for NaN and then interpolate missing values.
     """
-    columns = data_L.columns[3:-1]
+    columns = data_L.columns[3:]
     data_L.loc[data_L['Fy'] == 0, columns] = np.nan
     data_L.iloc[:, :] = data_L.interpolate(method="linear")
     data_L.iloc[:, :] = data_L.fillna(method="bfill")
@@ -55,7 +51,7 @@ def remove_system_gap(data_L):
 
 def remove_offset(data_L, remove=True):
     if remove:
-        columns = data_L.columns[3:-3]  # Choose Forces and Moments
+        columns = ["Fx", "Fy", "Fz", "Mx", "My", "Mz"]  # Choose Forces and Moments
         for col in columns:
             data_L.loc[:, col] = data_L.loc[:, col] - \
                 data_L.loc[5:60, col].mean()
@@ -209,7 +205,7 @@ if __name__ == '__main__':
         output_name = get_output_name(file)
 
         # Load Left force plates data
-        data_L = read_data(input_path+file)
+        data_L = pd.read_csv(input_path+file, header=31)
 
         # Match devices coordinate system
         data_L = system_match(data_L)

@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 from matplotlib import rcParams
 import json
 
-from Custom.models_functions import *
+from Custom.PlottingFunctions import *
 
 rcParams['pdf.fonttype'] = 42
 rcParams['ps.fonttype'] = 42

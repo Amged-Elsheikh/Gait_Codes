@@ -16,10 +16,10 @@ class WindowGenerator:
         self.out_labels = self.dataHandler.out_labels
         self.out_nums = len(self.out_labels)
         ####### Store the raw data #######
-        self.train_01_df = self.dataHandler['train_01']
-        self.train_02_df = self.dataHandler['train_02']
-        self.val_df = self.dataHandler['val']
-        self.test_df = self.dataHandler['test']
+        self.train_01_df = self.dataHandler.trials_data['train_01']
+        self.train_02_df = self.dataHandler.trials_data['train_02']
+        self.val_df = self.dataHandler.trials_data['val']
+        self.test_df = self.dataHandler.trials_data['test']
 
         ####### Window parameters #########
         # For more details about this part in code go to https://www.tensorflow.org/tutorials/structured_data/time_series

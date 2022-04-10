@@ -5,7 +5,7 @@ from matplotlib import rcParams
 import pandas as pd
 import tensorflow as tf
 
-from Custom.models_functions import *
+from Custom.PlottingFunctions import *
 
 rcParams['pdf.fonttype'] = 42
 rcParams['ps.fonttype'] = 42

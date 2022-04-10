@@ -5,41 +5,6 @@ import numpy as np
 import json
 
 
-def load_IK(ik_file: str) -> pd.DataFrame:
-    """
-    Load knee and ankle joints angles
-    ik_file (str): full directory name
-    """
-    IK = pd.read_csv(ik_file, header=8, sep='\t', usecols=[0, 17, 18])
-    return IK
-
-
-def load_ID(id_file: str) -> pd.DataFrame:
-    """
-    load knee and ankle joints moments
-    id_file (str): full directory name
-    """
-    ID = pd.read_csv(id_file, header=6, sep='\t', usecols=[0, 17, 19])
-    return ID_col_arranger(ID)  # Return re-arranged columns
-
-
-def load_time_intervals(periods_file: str) -> pd.DataFrame:
-    """
-    Load recording periods.
-    periods_file (str): full directory name
-    """
-    periods = pd.read_csv(periods_file, index_col="time")
-    return periods
-
-
-def load_features(features_file: str) -> pd.DataFrame:
-    """
-    features_file: .csv file
-    """
-    features = pd.read_csv(features_file, index_col='time')
-    return features
-
-
 def merge_joints(IK: pd.DataFrame, ID: pd.DataFrame, periods: pd.DataFrame) -> pd.DataFrame:
     """Join kinematics and kinetics data into a single pandas dataframe along with record periods dataframe which used to filter the dataset by removing all periods where ID solution was not available (no GRF data)
     """
@@ -69,16 +34,6 @@ def merge_IO(features: pd.DataFrame, joints_data: pd.DataFrame) -> pd.DataFrame:
                        on='time', how='inner')
     Dataset.set_index("time", inplace=True)
     return Dataset
-
-
-def ID_col_arranger(ID: pd.DataFrame) -> pd.DataFrame:
-    """
-    Arrange ID data columns to be:
-        ['time', 'knee_angle_r_moment', 'knee_angle_l_moment',
-                'ankle_angle_r_moment', 'ankle_angle_l_moment']
-    """
-    col = ID.columns
-    return ID[[col[0], col[1], col[3], col[2], col[4]]]
 
 
 def get_dataset(subject=None) -> None:
@@ -113,13 +68,13 @@ def get_dataset(subject=None) -> None:
     for ik_file, id_file, periods_file, features_file, output_name\
             in zip(IK_files, ID_files, periods_files, Features_files, output_files):
         # Load IK data
-        IK = load_IK(ik_file)
+        IK = pd.read_csv(ik_file, header=8, sep='\t', usecols=[0, 17, 18])
         # Load ID data
-        ID = load_ID(id_file)
+        ID = pd.read_csv(id_file, header=6, sep='\t', usecols=[0, 17, 19])
         # Load record interval data
-        periods = load_time_intervals(periods_file)
+        periods = pd.read_csv(periods_file, index_col="time")
         # Load EMG features
-        features = load_features(features_file)
+        features = pd.read_csv(features_file, index_col='time')
         # Merge IK, ID & record intervals together to create joint's dataset
         joints_data = merge_joints(IK, ID, periods)
         # Merge EMG features with joints data and down sample joints data to match the EMG features
@@ -138,5 +93,5 @@ def get_dataset(subject=None) -> None:
 
 
 if __name__ == "__main__":
-    for s in ["01", "02", "04"]:
-        get_dataset(s)
+    get_dataset("06")
+

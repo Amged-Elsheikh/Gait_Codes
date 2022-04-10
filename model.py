@@ -2,14 +2,36 @@ import json
 import os
 
 import matplotlib.pyplot as plt
-from matplotlib import rcParams
+import pandas as pd
 import tensorflow as tf
+from matplotlib import rcParams
 from tensorflow import keras
 
-from Custom.models_functions import *
+from Custom.DataHandler import DataHandler
+from Custom.PlottingFunctions import *
+from Custom.TFModels import *
+from Custom.TFModelEvaluation import *
+from Custom.OneSideWindowGenerator import *
+
 
 rcParams['pdf.fonttype'] = 42
 rcParams['ps.fonttype'] = 42
+
+
+# # Window generator creation function
+def create_window_generator(
+    subject=None, input_width=20, shift=3, label_width=1, batch_size=64, features=["RMS"], add_knee=False, out_labels=["ankle moment"]
+):
+    if subject == None:
+        subject = input("Please input subject number in XX format: ")
+    if len(subject) == 1:
+        subject = "0" + subject
+    # Get subject weight.
+    dataHandler = DataHandler(subject, features, add_knee, out_labels)
+    # #Create Window object
+    window_object = WindowGenerator(dataHandler, input_width,
+                                    label_width, shift, batch_size)
+    return window_object
 
 
 def train_fit(
@@ -71,7 +93,7 @@ def train_fit(
     ##############################################################################################################
     # Get predictions and real values
     window_object = window_generator(tested_on)
-    _, _, test_set = window_object.evaluation_set
+    test_set = window_object.evaluation_set
     y_pred = model.predict(test_set)
     if len(y_pred.shape) == 3:
         # Get the last time step and reduce output dimenions to two
@@ -107,9 +129,9 @@ if __name__ == "__main__":
         subject_details = json.load(f)
 
     # Choose features and labels
-    features = ["RMS", "ZC"]  # Used EMG features
-    add_knee = False  # True if you want to use knee angle as an extra input
-    out_labels = ["ankle moment"]  # Labels to be predicted
+    features = ["RMS", "ZC", "AR"]  # Used EMG features
+    add_knee = True  # True if you want to use knee angle as an extra input
+    out_labels = ["knee moment", "ankle moment"]  # Labels to be predicted
     loss_factor = 3.0  # Loss factor to prevent ankle slip
     # Window object parameters
     input_width = 15
@@ -130,30 +152,25 @@ if __name__ == "__main__":
     rmse_results = pd.DataFrame(columns=model_dic.keys())
     nrmse_results = pd.DataFrame(columns=model_dic.keys())
     predictions = {}
-    # w1 = window_generator(subject="1")
-    # w2 = window_generator(subject="2")
-    # w4 = window_generator(subject="4")
+    test_subject = "06"
+    # w1 = window_generator(subject="06")
+    # Train and test new/existing models
+    for model_name in model_dic.keys():
+        history, y_true, y_pred, r2, rmse = train_fit(
+            subject=test_subject, tested_on=None, model_name=model_name, epochs=1, eval_only=False, load_best=False,)
 
-    test_subject = "04"
-    for test_subject in ["01", "02", "04"]:
-        # Train and test new/existing models
-        for model_name in model_dic.keys():
-
-            history, y_true, y_pred, r2, rmse = train_fit(
-                subject=test_subject, tested_on=None, model_name=model_name, epochs=500, eval_only=False, load_best=False,)
-
-            predictions[model_name] = y_pred
-            nrmse = normalized_rmse(
-                y_true*subject_details[f"S{test_subject}"]["weight"], y_pred*subject_details[f"S{test_subject}"]["weight"])
-            print(f"NRMSE: {nrmse[0]}")
-            r2_results.loc[f"S{test_subject}", model_name] = r2[0]
-            rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
-            nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
-            # print(model_name)
-        plt.close()
-        plot_models(predictions, y_true,
-                    path=f"../Results/indiviuals/", subject=test_subject)
-        plt.close()
+        predictions[model_name] = y_pred
+        nrmse = normalized_rmse(
+            y_true*subject_details[f"S{test_subject}"]["weight"], y_pred*subject_details[f"S{test_subject}"]["weight"])
+        print(f"NRMSE: {nrmse[0]}")
+        r2_results.loc[f"S{test_subject}", model_name] = r2[0]
+        rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
+        nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
+        # print(model_name)
+    plt.close()
+    plot_models(predictions, y_true,
+                path=f"../Results/indiviuals/", subject=test_subject)
+    plt.close()
     r2_results.to_csv("../Results/indiviuals/R2_results.csv")
     rmse_results.to_csv("../Results/indiviuals/RMSE_results.csv")
     nrmse_results.to_csv("../Results/indiviuals/NRMSE_results.csv")
