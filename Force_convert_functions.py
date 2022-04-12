@@ -29,11 +29,13 @@ def system_match(data_L):
     # System stop working someat some frames creating a gap, fill the gaps using interpolatoion
     data_L = remove_system_gap(data_L)
     # Match opti-track and force Plates origins
-    data_L.loc[:, "Cz"] = data_L["Cz"].apply(lambda x: x+0.25)
-    data_L.loc[:, "Cx"] = data_L["Cx"].apply(lambda x: x+0.25)
+    data_L.loc[:, "Cx"] = data_L["Cx"].apply(lambda x: -(x-0.25))
+    data_L.loc[:, "Cz"] = data_L["Cz"].apply(lambda x: (x+0.25))
     # Complete the rotation by getting -z
-    data_L.loc[:, ["Fz", "Fx", "Mx", "Mz"]] = data_L[[
-        "Fz", "Fx", "Mx", "Mz"]].apply(lambda x: -x)
+    change_sign = ["Fx","Fz"]
+    # change_sign = ["Fx"]
+    # change_sign = ["Fz"]
+    data_L.loc[:, change_sign] = -data_L[change_sign]
     return data_L
 
 
@@ -42,27 +44,30 @@ def remove_system_gap(data_L):
     In some cases force plates stop recording and send only zeros. This function will\\
         first set these values for NaN and then interpolate missing values.
     """
-    columns = data_L.columns[3:]
-    data_L.loc[data_L['Fy'] == 0, columns] = np.nan
-    data_L.iloc[:, :] = data_L.interpolate(method="linear")
-    data_L.iloc[:, :] = data_L.fillna(method="bfill")
+    # columns = data_L.columns[3:]
+    # data_L.loc[data_L['Fy'] == 0, columns] = np.nan
+    # data_L.iloc[:, :] = data_L.interpolate(method="linear")
+    # data_L.iloc[:, :] = data_L.fillna(method="bfill")
     return data_L
 
 
 def remove_offset(data_L, remove=True):
     if remove:
-        columns = ["Fx", "Fy", "Fz", "Mx", "My", "Mz"]  # Choose Forces and Moments
-        for col in columns:
-            data_L.loc[:, col] = data_L.loc[:, col] - \
-                data_L.loc[5:60, col].mean()
+        # Choose Forces and Moments
+        columns = ["Fx", "Fy", "Fz", "Mx", "My", "Mz"]
+        for col in range(len(columns)):
+            data_L.iloc[:, col] = data_L.iloc[:, col] - \
+                data_L.iloc[5:15, col].mean()
     return data_L
 
 # There is a delay in system (various delay may change )
 
+
 def shift_data(data_L, shift_key):
     shift_columns = data_L.columns[3:]
     shift_value = subject_details[f"S{subject}"]["delay"][shift_key][0]
-    data_L.loc[:, shift_columns] = data_L[shift_columns].shift(shift_value, fill_value=0)
+    data_L.loc[:, shift_columns] = data_L[shift_columns].shift(
+        shift_value, fill_value=0)
     return data_L
 
 
@@ -77,9 +82,9 @@ def apply_filter(data_L):
                "Cx", "Cz"]
     for col in columns:
         data_L.loc[:, col] = filtfilt(b2, a2, data_L.loc[:, col])
-    # Make any force less than a 0.1*w to zero
-    data_L.loc[np.abs(data_L['Fy']) < 0.1*w,
-               ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
+    # #Make any force less than a 0.1*w to zero
+    # data_L.loc[np.abs(data_L['Fy']) < 0.1*w,
+    #            ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
     return data_L
 
 
@@ -135,7 +140,7 @@ def foot_in_FP(data, i, FP_x_lim):
     return False
 
 
-def put_cop_in_foot(current, p1, p2, axis='X'):
+def put_cop_in_foot(current, p1, p2):
     """
     current: the current COP to be checked (data.loc[i,Cz or Cx])
     p1: first position (data.loc[i,X1 or Z1])
@@ -155,9 +160,15 @@ def put_cop_in_foot(current, p1, p2, axis='X'):
 
 def GRF_data(data_L):
     data_L = col_rearrange(data_L)
-    L_columns_names_mapper = {"Fx": "1_ground_force_vx", "Fy": "1_ground_force_vy", "Fz": "1_ground_force_vz",
-                              "Cx": "1_ground_force_px", "Cy": "1_ground_force_py", "Cz": "1_ground_force_pz",
-                              "Mx": "1_ground_torque_x", "My": "1_ground_torque_y", "Mz": "1_ground_torque_z"}
+    L_columns_names_mapper = {"Fx": "1_ground_force_vx",
+                              "Fy": "1_ground_force_vy",
+                              "Fz": "1_ground_force_vz",
+                              "Cx": "1_ground_force_px",
+                              "Cy": "1_ground_force_py",
+                              "Cz": "1_ground_force_pz",
+                              "Mx": "1_ground_torque_x",
+                              "My": "1_ground_torque_y",
+                              "Mz": "1_ground_torque_z"}
 
     data_L.rename(columns=L_columns_names_mapper, inplace=True)
 
@@ -211,23 +222,23 @@ if __name__ == '__main__':
         data_L = system_match(data_L)
 
         # Remove the offset from the data
-        data_L = remove_offset(data_L)
+        # data_L = remove_offset(data_L)
 
         # Remove the delay
         data_L = shift_data(data_L, shift_key=trials[i])
 
         # Add COP limits from Opti-track
-        markers_file = markers_path + re.sub("_forceplate_[1|2]", "", file)
-        # Left side
-        L_markers = pd.read_csv(markers_file, header=6,
-                                usecols=[1, 14, 53, 49, 52])
-        L_markers.columns = cop_limits_columns
-        data_L = pd.merge(left=data_L, right=L_markers, on='time', how='inner')
+        # markers_file = markers_path + re.sub("_forceplate_[1|2]", "", file)
+        # # Left side
+        # L_markers = pd.read_csv(markers_file, header=6,
+        #                         usecols=[1, 14, 53, 49, 52])
+        # L_markers.columns = cop_limits_columns
+        # data_L = pd.merge(left=data_L, right=L_markers, on='time', how='inner')
 
     #     # Rename columns and merge Left and right side
         # Filter the data
         # data_L = filter_COP(data_L, "L")
-        data_L = apply_filter(data_L)
+        # data_L = apply_filter(data_L)
         force_data = GRF_data(data_L)
 
         # Save force data
