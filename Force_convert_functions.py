@@ -1,40 +1,9 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.signal import butter, filtfilt, savgol_filter
+from scipy.signal import butter, filtfilt
 import re
 import os
 import json
-
-# Rename columns for OpenSim
-
-
-def get_output_name(pair):
-    return re.sub("_forceplate_[1|2].csv", "_grf.sto", pair)
-
-
-def system_match(data):
-    """
-    Match opti-track and force plates axes.
-    Remove system gaps if any.
-
-    """
-    # To apply rotation, change column names.
-    col_names = {" Fx": "Fx", " Fy": "Fz", " Fz": "Fy",
-                 " Mx": "Mx", " My": "Mz", " Mz": "My",
-                 " Cx": "Cx", " Cy": "Cz", " Cz": "Cy",
-                 " MocapTime": "time"}
-
-    data.rename(columns=col_names, inplace=True)
-    ## System stop working someat some frames creating a gap, fill the gaps using interpolatoion
-    # data = remove_system_gap(data)
-    # Match opti-track and force Plates origins
-    data.loc[:, "Cx"] = data["Cx"].apply(lambda x: (x+0.25))
-    data.loc[:, "Cz"] = data["Cz"].apply(lambda x: (x+0.25))
-    # Complete the rotation
-    change_sign = ["Fx","Fz"]
-    data.loc[:, change_sign] = -data[change_sign]
-    return data
 
 
 def remove_system_gap(data):
@@ -43,7 +12,7 @@ def remove_system_gap(data):
         first set these values for NaN and then interpolate missing values.
     """
     columns = data.columns[3:]
-    data.loc[data['Fy'] == 0, columns] = np.nan
+    data.loc[data[' Fz'] == 0, columns] = np.nan
     data.iloc[:, :] = data.interpolate(method="linear")
     data.iloc[:, :] = data.fillna(method="bfill")
     return data
@@ -52,35 +21,82 @@ def remove_system_gap(data):
 def remove_offset(data, remove=True):
     if remove:
         # Choose Forces and Moments
-        columns = [" Fx", " Fy", " Fz", " Mx", " My"," Mz"]
-        for col in range(len(columns)):
-            data.iloc[:, col] = data.iloc[:, col] - data.iloc[5:15, col].mean()
+        columns = [" Fx", " Fy", " Fz", " Mx", " My", " Mz"]
+        for col in columns:
+            data.loc[:, col] = data.loc[:, col] - data.loc[5:15, col].mean()
+    return data
+
+
+def grf_periods(trigger=5):
+    stance_periods = []
+    start = None
+    for i, point in enumerate(data[" Fz"]):
+        # set starting point if this is the first point
+        if point >= trigger:
+            if start == None:
+                start = i
+        elif point < trigger and start != None:
+            # sometimes the subject might enter forceplate and leave it immediately because he enter with wrong foot. the filter will raise error if the number of points is less than 15
+            if i-start >= 20:
+                stance_periods.append(slice(start-3, i+3))
+            start = None
+    return stance_periods
+
+
+def apply_filter(data, trigger=5):
+    stance_periods = grf_periods(trigger)
+    f = 5  # Filter frequency
+    fs = 100  # Hz
+    low_pass = f/(fs/2)
+    b2, a2 = butter(N=4, Wn=low_pass, btype='lowpass')
+    columns = [" Fx", " Fy", " Fz",
+               " Mx", " My", " Mz", ]
+    # apply filter
+    for stance in stance_periods:
+        data.loc[stance, columns] = filtfilt(
+            b2, a2, data.loc[stance, columns], axis=0)
+        # CoP are calculated from the Force and Moment. Filter CoP by recalculate it from the filtered data. Note that the CoP will grow when foot outside force plate.
+        data.loc[stance, " Cx"] = - \
+            data.loc[stance, " My"]/data.loc[stance, " Fz"]
+        data.loc[stance, " Cy"] = data.loc[stance, " Mx"] / \
+            data.loc[stance, " Fz"]
+    columns.extend([" Cx", " Cy", " Cz"])
+    data.loc[0:stance_periods[0].start, columns] = 0
+    for i in range(1, len(stance_periods)):
+        previous_end = stance_periods[i-1].stop
+        current_start = stance_periods[i].start
+        data.loc[previous_end:current_start, columns] = 0
+    return data
+
+
+def system_match(data):
+    """
+    Match opti-track and force plates axes.
+    Remove system gaps if any.
+    """
+    # To apply rotation, change column names.
+    col_names = {" Fx": "Fx", " Fy": "Fz", " Fz": "Fy",
+                 " Mx": "Mx", " My": "Mz", " Mz": "My",
+                 " Cx": "Cx", " Cy": "Cz", " Cz": "Cy",
+                 " MocapTime": "time"}
+    data.rename(columns=col_names, inplace=True)
+    # Match opti-track and force Plates origins
+    data.loc[:, "Cx"] = data["Cx"] + 0.25
+    data.loc[:, "Cz"] = data["Cz"] + 0.25
+    # Complete the rotation
+    change_sign = ["Fx", "Fz"]
+    data.loc[:, change_sign] = -data[change_sign]
     return data
 
 
 # There is a delay in system (various delay may change )
 def shift_data(data, shift_key):
-    shift_columns = data.columns[3:]
+    shift_columns = ['Fx', 'Fz', 'Fy',
+                     'Mx', 'Mz', 'My',
+                     'Cx', 'Cz', 'Cy']
     shift_value = subject_details[f"S{subject}"]["delay"][shift_key][0]
     data.loc[:, shift_columns] = data[shift_columns].shift(
         shift_value, fill_value=0)
-    return data
-
-
-def apply_filter(data):
-    f = 8  # Filter frequency
-    fs = 100  # Hz
-    low_pass = f/(fs/2)
-    b2, a2 = butter(N=6, Wn=low_pass, btype='lowpass')
-    # columns = [" Fx", " Fy", " Fz",
-    #            " Mx", " My", " Mz",]
-    # for col in columns:
-    #     data.loc[:, col] = filtfilt(b2, a2, data.loc[:, col], axis=0)
-    # # CoP are calculated from the Force and Moment. 
-    # # Filter CoP by recalculate it from the filtered data. 
-    # # Note that the CoP will grow when foot outside force plate.  
-    # data.loc[:," Cx"] = -data.loc[:, " My"]/data.loc[:, " Fz"]
-    # data.loc[:," Cy"] = data.loc[:, " Mx"]/data.loc[:, " Fz"]
     return data
 
 
@@ -89,6 +105,7 @@ def col_rearrange(data):
 
 
 def GRF_data(data):
+    # make sure columns are weell arranged
     data = col_rearrange(data)
     L_columns_names_mapper = {"Fx": "1_ground_force_vx",
                               "Fy": "1_ground_force_vy",
@@ -99,10 +116,7 @@ def GRF_data(data):
                               "Mx": "1_ground_torque_x",
                               "My": "1_ground_torque_y",
                               "Mz": "1_ground_torque_z"}
-
     data.rename(columns=L_columns_names_mapper, inplace=True)
-
-    # GRF = pd.merge(left=data, right=data_R, how="outer", on="time")
     return data
 
 
@@ -134,13 +148,13 @@ if __name__ == '__main__':
     output_path = f"../OpenSim/S{subject}/{date}/Dynamics/Force_Data/"
     # Get files names
     trials = ["train_01", "train_02", "val", "test"]
-    files = [f"S{subject}_{trial}_forceplate_1" for trial in trials]
+    files = [f"S{subject}_{trial}_forceplate_1.csv" for trial in trials]
     # Process each trial
     for i, file in enumerate(files):
-        output_name = get_output_name(file)
-
         # Load Left force plates data
         data = pd.read_csv(input_path+file, header=31)
+        # System sometimes stop sending data for few frames
+        data = remove_system_gap(data)
         # Remove the offset from the data
         data = remove_offset(data)
         # Apply low pass filter
@@ -149,7 +163,8 @@ if __name__ == '__main__':
         data = system_match(data)
         # Remove the delay
         data = shift_data(data, shift_key=trials[i])
-        # data = filter_COP(data, "L")
+        # Rename columns to match OpenSim default names
         force_data = GRF_data(data)
         # Save force data
+        output_name = re.sub("_forceplate_[0-9].csv", "_grf.sto", file)
         save_force_data(force_data, output_path, output_name)
