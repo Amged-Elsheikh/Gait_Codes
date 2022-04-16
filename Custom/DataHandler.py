@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import json
 from sklearn.preprocessing import MinMaxScaler
 
@@ -86,6 +85,6 @@ class DataHandler:
         return data
 
 if __name__ == "__main__":
-    DataHandler("01", ["RMS","ZC","AR"])
+    DataHandler("06", ["RMS","ZC","AR"])
 
 
