@@ -163,6 +163,8 @@ if __name__ == '__main__':
         data = system_match(data)
         # Remove the delay
         data = shift_data(data, shift_key=trials[i])
+        # Make sure delta time is 0.01
+        data['time'] = data["MocapFrame"]/100
         # Rename columns to match OpenSim default names
         force_data = GRF_data(data)
         # Save force data
