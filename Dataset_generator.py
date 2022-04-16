@@ -94,4 +94,3 @@ def get_dataset(subject=None) -> None:
 
 if __name__ == "__main__":
     get_dataset("06")
-
