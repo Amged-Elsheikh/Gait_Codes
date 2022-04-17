@@ -19,9 +19,9 @@ class DataHandler:
         trials_directory = list(
             map(lambda x: f"../Dataset/S{subject}/{x}_dataset.csv", trials))
         # #Load data and store it in a dictionary
-        self.trials_data = dict()
+        self.data = dict()
         for trial, trial_directory in zip(trials, trials_directory):
-            self.trials_data[trial] = pd.read_csv(
+            self.data[trial] = pd.read_csv(
                 trial_directory, index_col="time")
         # Features number info
 
@@ -33,13 +33,13 @@ class DataHandler:
         
         self.model_columns.extend(self.out_labels)
 
-        for trial in self.trials_data.keys():
+        for trial in self.data.keys():
             # Select columns
-            self.trials_data[trial] = self.trials_data[trial][self.dataset_columns]
+            self.data[trial] = self.data[trial][self.dataset_columns]
             # Scale
-            self.trials_data[trial] = self.scale(self.trials_data[trial])
+            self.data[trial] = self.scale(self.data[trial])
             # Take only selected columns for model
-            self.trials_data[trial] = self.trials_data[trial][self.model_columns]
+            self.data[trial] = self.data[trial][self.model_columns]
 
         if self.add_knee:
             self.features_num += 1
@@ -54,10 +54,10 @@ class DataHandler:
 
     def _get_datasets_columns(self):
         self.joints_columns = list(
-            filter(lambda x: "sensor" not in x, self.trials_data["val"]))
+            filter(lambda x: "sensor" not in x, self.data["val"]))
         self.emg_features = []
         # O(N*n) method
-        for col in self.trials_data["val"]:
+        for col in self.data["val"]:
             for feature in self.features:
                 if feature in col:
                     self.emg_features.append(col)
