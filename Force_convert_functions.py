@@ -6,21 +6,14 @@ import re
 import os
 import json
 
-with open("subject_details.json", "r") as f:
-    subject_details = json.load(f)
 
-subject = input(f"insert subject number in XX format: ")
-date = subject_details[f"S{subject}"]["date"]
-w = subject_details[f"S{subject}"]["weight"]
-
-
-def read_data(path):
-    return pd.read_csv(path, header=31)
-# Rename columns for OpenSim
-
-
-def get_output_name(pair):
-    return re.sub("_forceplate_[0-9].csv", "_grf.sto", pair)
+def load_data(trial_files):
+    for side in trial_files:
+        if "2.csv" in side:
+            data_R = pd.read_csv(input_path+side, header=31)
+        elif "1.csv" in side:
+            data_L = pd.read_csv(input_path+side, header=31)
+    return data_L, data_R
 
 
 def remove_system_gap(data_L, data_R):
@@ -29,41 +22,12 @@ def remove_system_gap(data_L, data_R):
         first set these values for NaN and then interpolate missing values.
     """
     columns = data_L.columns[3:-1]
-    data_L.loc[data_L['Fy'] == 0, columns] = np.nan
-    data_R.loc[data_R['Fy'] == 0, columns] = np.nan
+    data_L.loc[data_L[' Fy'] == 0, columns] = np.nan
+    data_R.loc[data_R[' Fy'] == 0, columns] = np.nan
     data_L.iloc[:, :] = data_L.interpolate(method="linear")
     data_R.iloc[:, :] = data_R.interpolate(method="linear")
     data_L.iloc[:, :] = data_L.fillna(method="bfill")
     data_R.iloc[:, :] = data_R.fillna(method="bfill")
-    return data_L, data_R
-
-
-def system_match(data_L, data_R):
-    """
-    Match opti-track and force plates axes.
-    Remove system gaps if any.
-
-    """
-    # To apply rotation, change column names.
-    col_names = {" Fx": "Fx", " Fy": "Fz", " Fz": "Fy",
-                 " Mx": "Mx", " My": "Mz", " Mz": "My",
-                 " Cx": "Cx", " Cy": "Cz", " Cz": "Cy",
-                 " MocapTime": "time"}
-
-    data_L.rename(columns=col_names, inplace=True)
-    data_R.rename(columns=col_names, inplace=True)
-    # System stop working someat some frames creating a gap, fill the gaps using interpolatoion
-    data_L, data_R = remove_system_gap(data_L, data_R)
-    # Match opti-track and force Plates origins
-    data_L.loc[:, "Cz"] = data_L["Cz"].apply(lambda x: x+0.25)
-    data_R.loc[:, "Cz"] = data_R["Cz"].apply(lambda x: x+0.25)
-    data_L.loc[:, "Cx"] = data_L["Cx"].apply(lambda x: x+0.25)
-    data_R.loc[:, "Cx"] = data_R["Cx"].apply(lambda x: x+0.75)
-    # Complete the rotation by getting -z
-    data_L.loc[:, ["Fz", "Fx", "Mx", "Mz"]] = data_L[[
-        "Fz", "Fx", "Mx", "Mz"]].apply(lambda x: -x)
-    data_R.loc[:, ["Fz", "Fx", "Mx", "Mz"]] = data_R[[
-        "Fz", "Fx", "Mx", "Mz"]].apply(lambda x: -x)
     return data_L, data_R
 
 
@@ -78,35 +42,101 @@ def remove_offset(data_L, data_R, remove=True):
     return data_L, data_R
 
 
-f = 6  # Filter frequency
-fs = 100  # Hz
-low_pass = f/(fs/2)
-b2, a2 = butter(N=2, Wn=low_pass, btype='lowpass')
+def grf_periods(data, trigger=5):
+    stance_periods = []
+    start = None
+    for i, point in enumerate(data[" Fz"]):
+        # set starting point if this is the first point
+        if point >= trigger:
+            if start == None:
+                start = i
+        elif point < trigger and start != None:
+            # sometimes the subject might enter forceplate and leave it immediately because he enter with wrong foot. the filter will raise error if the number of points is less than 15
+            if i-start >= 20:
+                stance_periods.append(slice(start-3, i+3))
+            start = None
+    return stance_periods
 
 
-def apply_filter(data_L, data_R):
-    columns = ["Fx", "Fy", "Fz",
-               "Mx", "My", "Mz",
-               "Cx", "Cz"]
-    for col in columns:
-        data_L.loc[:, col] = filtfilt(b2, a2, data_L.loc[:, col])
-        data_R.loc[:, col] = filtfilt(b2, a2, data_R.loc[:, col])
-    # Make any force less than a 0.1*w to zero
-    data_L.loc[np.abs(data_L['Fy']) < 0.1*w,
-               ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
-    data_R.loc[np.abs(data_R['Fy']) < 0.1*w,
-               ['Fx', 'Fy', 'Fz', 'Mx', 'My', 'Mz']] = 0
+def apply_filter(data, trigger=3):
+    stance_periods = grf_periods(data, trigger)
+    f = 5  # Filter frequency
+    fs = 100  # Hz
+    low_pass = f/(fs/2)
+    b2, a2 = butter(N=4, Wn=low_pass, btype='lowpass')
+    columns = [" Fx", " Fy", " Fz",
+               " Mx", " My", " Mz", ]
+    # apply filter
+    for stance in stance_periods:
+        data.loc[stance, columns] = filtfilt(
+            b2, a2, data.loc[stance, columns], axis=0)
+        # CoP are calculated from the Force and Moment. Filter CoP by recalculate it from the filtered data. Note that the CoP will grow when foot outside force plate.
+        data.loc[stance, " Cx"] = - \
+            data.loc[stance, " My"]/data.loc[stance, " Fz"]
+        data.loc[stance, " Cy"] = data.loc[stance, " Mx"] / \
+            data.loc[stance, " Fz"]
+    columns.extend([" Cx", " Cy", " Cz"])
+    data.loc[0:stance_periods[0].start, columns] = 0
+    for i in range(1, len(stance_periods)):
+        previous_end = stance_periods[i-1].stop
+        current_start = stance_periods[i].start
+        data.loc[previous_end:current_start, columns] = 0
+    return data
+
+
+def system_match(data_L, data_R):
+    """
+    Match opti-track and force plates axes.
+    """
+    # To apply rotation, change column names.
+    col_names = {" Fx": "Fx", " Fy": "Fz", " Fz": "Fy",
+                 " Mx": "Mx", " My": "Mz", " Mz": "My",
+                 " Cx": "Cx", " Cy": "Cz", " Cz": "Cy",
+                 " MocapTime": "time"}
+
+    data_L.rename(columns=col_names, inplace=True)
+    data_R.rename(columns=col_names, inplace=True)
+
+    # Match opti-track and force Plates origins
+    data_L.loc[:, "Cz"] = data_L["Cz"] + 0.25
+    data_R.loc[:, "Cz"] = data_R["Cz"] + 0.25
+    data_L.loc[:, "Cx"] = data_L["Cx"] + 0.25
+    data_R.loc[:, "Cx"] = data_R["Cx"] + 0.75
+    # Complete the rotation by getting -z
+    change_sign = ["Fx", "Fz"]
+    data_L.loc[:, change_sign] = -data_L[change_sign]
+    data_R.loc[:, change_sign] = -data_R[change_sign]
     return data_L, data_R
 
 
 # There is a delay in system (various delay may change )
-
 def shift_data(data_L, data_R, shift_key):
-    shift_columns = data_R.columns[3:]
+    shift_columns = [' Fx', ' Fz', ' Fy',
+                     ' Mx', ' Mz', ' My', ]
+    left_shift = subject_details[f"S{subject}"]["delay"][shift_key][0]
+    right_shift = subject_details[f"S{subject}"]["delay"][shift_key][1]
     data_L.loc[:, shift_columns] = data_L[shift_columns].shift(
-        subject_details[f"S{subject}"]["delay"][shift_key][0], fill_value=0)
+        left_shift, fill_value=0)
     data_R.loc[:, shift_columns] = data_R[shift_columns].shift(
-        subject_details[f"S{subject}"]["delay"][shift_key][1], fill_value=0)
+        right_shift, fill_value=0)
+    return data_L, data_R
+
+
+def force_plate_pipeline(data_L, data_R):
+    # System stop working someat some frames creating a gap, fill the gaps using interpolatoion
+    data_L, data_R = remove_system_gap(data_L, data_R)
+    # Remove the delay
+    data_L, data_R = shift_data(data_L, data_R, shift_key=trials[i])
+    # Remove the offset from the data
+    data_L, data_R = remove_offset(data_L, data_R)
+    # Filter the data
+    data_L = apply_filter(data_L)
+    data_R = apply_filter(data_R)
+    # Match devices coordinate system
+    data_L, data_R = system_match(data_L, data_R)
+    # Make sure delta time is 0.01
+    data_L['time'] = data_L["MocapFrame"]/100
+    data_R['time'] = data_R["MocapFrame"]/100
     return data_L, data_R
 
 
@@ -114,83 +144,17 @@ def col_rearrange(data):
     return data[["time", "Fx", "Fy", "Fz", "Mx", "My", "Mz", "Cx", "Cy", "Cz"]]
 
 
-def filter_COP(data, side=None):
-    """
-    side: L or R to decide the forceplate limits
-    """
-    FP_z_lim = (0, 0.5)
-    if side == 'L':
-        FP_x_lim = (0, 0.5)
-    elif side == "R":
-        FP_x_lim = (0.5, 1)
-    else:
-        raise ('Side should be "L" or "R"')
-
-    x_mid = (FP_x_lim[0]+FP_x_lim[1])/2
-    z_mid = (FP_z_lim[0]+FP_z_lim[1])/2
-    for i in data.index:
-        # Check if foot in force plate, move COP toward foot if it's not
-        if foot_in_FP(data, i, FP_x_lim):
-            data.loc[i, 'Cx'] = put_cop_in_foot(current=data.loc[i, 'Cx'],
-                                                p1=data.loc[i, 'X1'],
-                                                p2=data.loc[i, 'X2'])
-
-            data.loc[i, 'Cz'] = put_cop_in_foot(current=data.loc[i, 'Cz'],
-                                                p1=data.loc[i, 'Z1'],
-                                                p2=data.loc[i, 'Z2'])
-
-        # Remaining will affect COP visualizing
-        # Check if COP is out side FP, of course in this case subject not in FP
-        # if Cop outside in one direction, make it equal to the point behind.
-        else:
-            if not FP_x_lim[0] <= data.loc[i, "Cx"] <= FP_x_lim[1]:
-                data.loc[i, "Cx"] = x_mid
-
-            if not FP_z_lim[0] <= data.loc[i, "Cz"] <= FP_z_lim[1]:
-                data.loc[i, "Cz"] = z_mid
-
-    return data.drop(columns=cop_limits_columns_remove)
-
-
-def foot_in_FP(data, i, FP_x_lim):
-    FP_z_lim = (0, 0.5)
-    if FP_x_lim[0] <= data.loc[i, 'X1'] <= FP_x_lim[1]:
-        if FP_x_lim[0] <= data.loc[i, 'X2'] <= FP_x_lim[1]:
-            if FP_z_lim[0] <= data.loc[i, 'Z1'] <= FP_z_lim[1]:
-                if FP_z_lim[0] <= data.loc[i, 'Z2'] <= FP_z_lim[1]:
-                    return True
-    return False
-
-
-def put_cop_in_foot(current, p1, p2, axis='X'):
-    """
-    current: the current COP to be checked (data.loc[i,Cz or Cx])
-    p1: first position (data.loc[i,X1 or Z1])
-    p2: second point (data.loc[i,X2 or Z2])
-    """
-    minimum = np.minimum(p1, p2)
-    maximum = np.maximum(p1, p2)
-    if not minimum <= current <= maximum:  # if Cx not in the foot
-        # Move to the closest edge
-        if np.abs(current - minimum) < np.abs(current - maximum):
-            return minimum
-        else:
-            return maximum
-    else:
-        return current
-
-
+# Rename columns for OpenSim
 def GRF_data(data_L, data_R):
     data_L = col_rearrange(data_L)
     data_R = col_rearrange(data_R)
-    L_columns_names_mapper = {"Fx": "1_ground_force_vx", "Fy": "1_ground_force_vy", "Fz": "1_ground_force_vz",
-                              "Cx": "1_ground_force_px", "Cy": "1_ground_force_py", "Cz": "1_ground_force_pz",
-                              "Mx": "1_ground_torque_x", "My": "1_ground_torque_y", "Mz": "1_ground_torque_z"}
-
     R_columns_names_mapper = {"Fx": "ground_force_vx", "Fy": "ground_force_vy", "Fz": "ground_force_vz",
                               "Cx": "ground_force_px", "Cy": "ground_force_py", "Cz": "ground_force_pz",
                               "Mx": "ground_torque_x", "My": "ground_torque_y", "Mz": "ground_torque_z"}
 
+    L_columns_names_mapper = {
+        key: f"1_{R_columns_names_mapper[key]}" for key in R_columns_names_mapper}
+        
     data_L.rename(columns=L_columns_names_mapper, inplace=True)
     data_R.rename(columns=R_columns_names_mapper, inplace=True)
 
@@ -213,61 +177,25 @@ def save_force_data(force_data, output_path, output_name):
                 f'nRows={nRows}\n' + f'nColumns={nColumns}\n' + 'inDegrees=yes\n' + 'endheader\n' + old)
 
 
-input_path = f"../Data/S{subject}/{date}/Dynamics/Force_Data/"
-output_path = f"../OpenSim/S{subject}/{date}/Dynamics/Force_Data/"
-files = os.listdir(input_path)
-pairs = []
-
-markers_path = f"../Data/S{subject}/{date}/Dynamics/motion_data/"
-cop_limits_columns = ['time', 'X1', 'Z1', "Z2", "X2"]
-cop_limits_columns_remove = ['X1', 'Z1', "Z2", "X2"]
-
-# Get files names
-trials = ["train_01", "train_02", "val", "test"]
-pairs = list(map(lambda x: (
-    f"S{subject}_{x}_forceplate_1.csv", f"S{subject}_{x}_forceplate_2.csv"), trials))
-
-# Process each trial
-for i, pair in enumerate(pairs):
-    output_name = get_output_name(pair[0])
-
-    # Load Left(1) and Right(2) force plates data
-    for side in pair:
-        markers_file = markers_path + re.sub("_forceplate_[1-2]", "", side)
-        if "2.csv" in side:
-            data_R = read_data(input_path+side)
-        elif "1.csv" in side:
-            data_L = read_data(input_path+side)
-
-    # Match devices coordinate system
-    data_L, data_R = system_match(data_L, data_R)
-
-    # Remove the offset from the data
-    data_L, data_R = remove_offset(data_L, data_R)
-
-    # Remove the delay
-    data_L, data_R = shift_data(data_L, data_R, shift_key=trials[i])
-
-    # Add COP limits from Opti-track
-    # Right side
-    R_markers = pd.read_csv(markers_file, header=6,
-                            usecols=[1, 68, 107, 103, 106])
-    R_markers.columns = cop_limits_columns
-
-    data_R = pd.merge(left=data_R, right=R_markers, on='time', how='inner')
-    # Left side
-    L_markers = pd.read_csv(markers_file, header=6,
-                            usecols=[1, 14, 53, 49, 52])
-    L_markers.columns = cop_limits_columns
-    data_L = pd.merge(left=data_L, right=L_markers, on='time', how='inner')
-
-
-#     # Rename columns and merge Left and right side
-    # Filter the data
-    # data_L = filter_COP(data_L, "L")
-#     data_R = filter_COP(data_R,"R")
-    data_L, data_R = apply_filter(data_L, data_R)
-    force_data = GRF_data(data_L, data_R)
-
-    # Save force data
-    save_force_data(force_data, output_path, output_name)
+if __name__ == "__main__":
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
+        
+    subject = "02"#input(f"insert subject number in XX format: ")
+    date = subject_details[f"S{subject}"]["date"]
+    input_path = f"../Data/S{subject}/{date}/Dynamics/Force_Data/"
+    output_path = f"../OpenSim/S{subject}/{date}/Dynamics/Force_Data/"
+    # Get files names
+    trials = ["train_01", "train_02", "val", "test"]
+    files = [[f"S{subject}_{trial}_forceplate_{i}.csv" for i in [1, 2]]
+             for trial in trials]
+    # Process each trial
+    for i, trial_files in enumerate(files):
+        # Load Left(1) and Right(2) force plates data
+        data_L, data_R = load_data(trial_files)
+        data_L, data_R = force_plate_pipeline(data_L, data_R)
+        force_data = GRF_data(data_L, data_R)
+        # Save force data
+        output_name = re.sub(
+            "_forceplate_[0-9].csv", "_grf.sto", trial_files[0])
+        save_force_data(force_data, output_path, output_name)
