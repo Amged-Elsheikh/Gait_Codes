@@ -27,7 +27,7 @@ def remove_offset(data, remove=True):
     return data
 
 
-def grf_periods(trigger=5):
+def grf_periods(data, trigger=5):
     stance_periods = []
     start = None
     for i, point in enumerate(data[" Fz"]):
@@ -44,7 +44,7 @@ def grf_periods(trigger=5):
 
 
 def apply_filter(data, trigger=5):
-    stance_periods = grf_periods(trigger)
+    stance_periods = grf_periods(data, trigger)
     f = 5  # Filter frequency
     fs = 100  # Hz
     low_pass = f/(fs/2)
