@@ -223,7 +223,7 @@ def emg_to_features(subject=None):
         # save dataset
         dataset.to_csv(output_file)
         # Plot data
-        plot_RMS(dataset, emg_file)
+        # plot_RMS(dataset, emg_file)
 
 
 # %%
@@ -236,7 +236,7 @@ if __name__ == "__main__":
 
     sensors_num = 6
 
-    for s in ["01","02", "04"]:
+    for s in ["03",]:
         emg_to_features(s)
         try:
             # If all subject data files exisit, the dataset will be automatically generated/updated

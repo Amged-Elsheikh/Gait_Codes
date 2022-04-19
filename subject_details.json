@@ -42,10 +42,10 @@
                   "val":[0,0],
                   "test":[0,0]},
 
-        "emg_sync": {"train_01":{"start":0, "length":0},
-                     "train_02":{"start":0, "length":0},
-                     "val":{"start":0, "length":0},
-                     "test":{"start":0, "length":0}}
+        "emg_sync": {"train_01":{"start":7.58, "length":177},
+                     "train_02":{"start":7.73, "length":188},
+                     "val":{"start":9.12, "length":183},
+                     "test":{"start":7.49, "length":69}}
     },
     "S04": {
         "date": 20211122,
