@@ -30,8 +30,8 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, f
         print(f"{col} R2 score: {R2_score[i]}")
         print(f"{col} RMSE result: {rmse_result[i]}")
         print(f"{col} max error is {max_error}Nm/Kg")
-        plt.plot(time, -y_true[:, i], linewidth=2.5)
-        plt.plot(time, -y_pred[:, i], "r--", linewidth=2,)
+        plt.plot(time, y_true[:, i], linewidth=2.5)
+        plt.plot(time, y_pred[:, i], "r--", linewidth=2,)
         plt.title(col, fontsize=title_size)
         if i == 0:
             plt.legend(["measured moment", "prediction"], fontsize=label_size)
@@ -44,6 +44,7 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, f
         plt.xticks(fontsize=tick_size)
         plt.yticks(fontsize=tick_size)
         plt.grid(True)
+        plt.axhline(y = 0, color = 'black', linestyle = '-')
     plt.tight_layout()
     plt.savefig(f"{folder}{out_labels[i]}.svg")
     plt.savefig(f"{folder}{out_labels[i]}.pdf")
@@ -62,8 +63,8 @@ def plot_models(predictions: dict, y_true, path: str, subject=None):
     plt.figure(f"S{subject} GM", figsize=(11, 9))
     for i, model_name in enumerate(predictions.keys()):
         plt.subplot(len(predictions.keys()), 1, i+1)
-        plt.plot(time, -y_true, linewidth=2.5, label="measured moment")
-        plt.plot(time, -predictions[model_name],
+        plt.plot(time, y_true[:,i], linewidth=2.5, label="measured moment")
+        plt.plot(time, predictions[model_name][:,i],
                  "r--", linewidth=2, label="prediction")
         plt.title(model_name, fontsize=title_size)
         plt.xlim((0, 9))
