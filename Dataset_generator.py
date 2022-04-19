@@ -28,7 +28,7 @@ def load_time_intervals(periods_file: str) -> pd.DataFrame:
     Load recording periods.
     periods_file (str): full directory name
     """
-    periods = pd.read_csv(periods_file, index_col="time")
+    periods = pd.read_csv(periods_file)
     return periods
 
 
@@ -40,24 +40,41 @@ def load_features(features_file: str) -> pd.DataFrame:
     return features
 
 
-def merge_joints(IK: pd.DataFrame, ID: pd.DataFrame, periods: pd.DataFrame) -> pd.DataFrame:
+def merge_joints(IK: pd.DataFrame, ID: pd.DataFrame) -> pd.DataFrame:
     """Join kinematics and kinetics data into a single pandas dataframe along with record periods dataframe which used to filter the dataset by removing all periods where ID solution was not available (no GRF data)
     """
     # Merge kinematics and kinetics data
     joints_data = pd.merge(IK, ID, on='time', how='inner')
     # Assert no data loss
-    assert len(joints_data) == len(ID) == len(IK)
-    # Merge the columns that tells when to make measurements (record periods)
-    joints_data_with_events = pd.merge(
-        joints_data, periods, on='time', how='inner')
+    # assert len(joints_data) == len(ID) == len(IK)
     # Reset time to zero to match EMG
-    joints_data_with_events = reset_time(joints_data_with_events)
-    return joints_data_with_events
+    joints_data = reset_time(joints_data)
+    return joints_data
+
+def select_walking_trials(joints_data, periods):
+    left = periods[['left_start', 'left_end']].dropna()
+    right = periods[['right_start', 'right_end']].dropna()
+    right = right.reset_index(drop=True)
+    # work on left side
+    left_joints = ['knee_angle_l_moment','ankle_angle_l_moment']
+    right_joints = ['knee_angle_r_moment','ankle_angle_r_moment']
+    joints_data.loc[:left.iloc[0,0], left_joints] = np.nan
+    joints_data.loc[:right.iloc[0,0], right_joints] = np.nan
+    for i in range(1, len(left)):
+        previous_end = left.loc[i-1,'left_end']
+        current_start = left.loc[i, 'left_start']
+        joints_data.loc[previous_end:current_start, left_joints] = np.nan
+    for i in range(1, len(right)):
+        previous_end = right.loc[i-1,'right_end']
+        current_start = right.loc[i, 'right_start']
+        joints_data.loc[previous_end:current_start, right_joints] = np.nan
+    return joints_data
+    
 
 
 def reset_time(data: pd.DataFrame) -> pd.DataFrame:
     start_time = data['time'].min()
-    data['time'] = data['time'].apply(lambda x: x-start_time)
+    data['time'] = data['time'] -start_time
     data['time'] = np.around(data['time'], 3)
     return data
 
@@ -102,7 +119,7 @@ def get_dataset(subject=None) -> None:
 
     record_periods_path = f"../Outputs/S{subject}/{date}/record_periods/"
     periods_files = list(
-        map(lambda x: f"{record_periods_path}{x}_record_periods.csv", files))
+        map(lambda x: f"{record_periods_path}S{subject}_{x}_record_periods.csv", files))
 
     features_path = f"../Outputs/S{subject}/{date}/EMG/"
     Features_files = list(
@@ -123,16 +140,10 @@ def get_dataset(subject=None) -> None:
         # Load EMG features
         features = load_features(features_file)
         # Merge IK, ID & record intervals together to create joint's dataset
-        joints_data = merge_joints(IK, ID, periods)
+        joints_data = merge_joints(IK, ID)
         # Merge EMG features with joints data and down sample joints data to match the EMG features
+        joints_data = select_walking_trials(joints_data, periods)
         Dataset = merge_IO(features, joints_data)
-        # Remove Kinetics data that are not in the recording period and then remove the periods columns
-        Dataset.loc[Dataset['left_side'] == False, [
-            'knee_angle_l_moment', 'ankle_angle_l_moment']] = np.nan
-        Dataset.loc[Dataset['right_side'] == False, [
-            'knee_angle_r_moment', 'ankle_angle_r_moment']] = np.nan
-        Dataset.drop(columns=['left_side', 'right_side'],
-                     inplace=True)  # Drop periods columns
         # Rename column and save the dataset
         new_col = {'knee_angle_r': "Right knee angle",
                    'ankle_angle_r': 'Right ankle angle',
@@ -147,5 +158,5 @@ def get_dataset(subject=None) -> None:
 
 
 if __name__ == "__main__":
-    for s in ["01", "02", "04"]:
-        get_dataset(s)
+    s = "01"
+    get_dataset(s)
