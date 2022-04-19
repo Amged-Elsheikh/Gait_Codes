@@ -64,7 +64,7 @@ def get_dataset(subject=None) -> None:
 
     record_periods_path = f"../Outputs/S{subject}/{date}/record_periods/"
     periods_files = list(
-        map(lambda x: f"{record_periods_path}{x}_record_periods.csv", files))
+        map(lambda x: f"{record_periods_path}S{subject}_{x}_record_periods.csv", files))
 
     features_path = f"../Outputs/S{subject}/{date}/EMG/"
     Features_files = list(
