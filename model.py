@@ -68,9 +68,10 @@ def train_fit(
             model.load_weights(model_file)
         except:
             print("No saved model existing. weights will be initialized")
-    ##############################################################################################################
+    ############################################################################
     # Train Model
-    try:  # Train or load the best model the model
+    # Train or load the best model the model
+    try:
         if not eval_only:
             history = model.fit(
                 x=train_set,
@@ -90,7 +91,7 @@ def train_fit(
         print(history)
     except OSError:  # If no saved model to be evaluated exist
         print("No saved model existing. weights will be initialized")
-    ##############################################################################################################
+    ############################################################################
     # Get predictions and real values
     window_object = window_generator(tested_on)
     test_set = window_object.evaluation_set
@@ -129,8 +130,8 @@ if __name__ == "__main__":
         subject_details = json.load(f)
 
     # Choose features and labels
-    features = ["RMS", "ZC", "AR"]  # Used EMG features
-    add_knee = True  # True if you want to use knee angle as an extra input
+    features = ["RMS", "ZC"]  # Used EMG features
+    add_knee = False  # True if you want to use knee angle as an extra input
     out_labels = ["knee moment", "ankle moment"]  # Labels to be predicted
     loss_factor = 3.0  # Loss factor to prevent ankle slip
     # Window object parameters
@@ -152,12 +153,16 @@ if __name__ == "__main__":
     rmse_results = pd.DataFrame(columns=model_dic.keys())
     nrmse_results = pd.DataFrame(columns=model_dic.keys())
     predictions = {}
+
     test_subject = "06"
-    # w1 = window_generator(subject="06")
-    # Train and test new/existing models
-    for model_name in model_dic.keys():
+    for model_name in model_dic:
         history, y_true, y_pred, r2, rmse = train_fit(
-            subject=test_subject, tested_on=None, model_name=model_name, epochs=1, eval_only=False, load_best=False,)
+            subject=test_subject,
+            tested_on=None,
+            model_name=model_name,
+            epochs=1000,
+            eval_only=True,
+            load_best=False,)
 
         predictions[model_name] = y_pred
         nrmse = normalized_rmse(
@@ -167,9 +172,9 @@ if __name__ == "__main__":
         rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
         nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
         # print(model_name)
-    plt.close()
-    plot_models(predictions, y_true,
-                path=f"../Results/indiviuals/", subject=test_subject)
+        plt.show()
+    # plot_models(predictions, y_true,
+    #             path=f"../Results/indiviuals/", subject=test_subject)
     plt.close()
     r2_results.to_csv("../Results/indiviuals/R2_results.csv")
     rmse_results.to_csv("../Results/indiviuals/RMSE_results.csv")
