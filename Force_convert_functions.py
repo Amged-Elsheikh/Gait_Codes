@@ -6,6 +6,14 @@ import os
 import json
 
 
+def get_IO_dir(subject, trials):
+    date = subject_details[f"S{subject}"]["date"]
+    input_path = f"../Data/S{subject}/{date}/Dynamics/Force_Data/"
+    output_path = f"../OpenSim/S{subject}/{date}/Dynamics/Force_Data/"
+    files = [f"S{subject}_{trial}_forceplate_1.csv" for trial in trials]
+    return input_path, output_path, files
+
+
 def remove_system_gap(data):
     """
     In some cases force plates stop recording and send only zeros. This function will\\
@@ -27,14 +35,13 @@ def remove_offset(data, remove=True):
     return data
 
 
-def grf_periods(trigger=5):
+def grf_periods(data, trigger=5):
     stance_periods = []
     start = None
     for i, point in enumerate(data[" Fz"]):
         # set starting point if this is the first point
-        if point >= trigger:
-            if start == None:
-                start = i
+        if point >= trigger and start == None:
+            start = i
         elif point < trigger and start != None:
             # sometimes the subject might enter forceplate and leave it immediately because he enter with wrong foot. the filter will raise error if the number of points is less than 15
             if i-start >= 20:
@@ -44,7 +51,7 @@ def grf_periods(trigger=5):
 
 
 def apply_filter(data, trigger=5):
-    stance_periods = grf_periods(trigger)
+    stance_periods = grf_periods(data, trigger)
     f = 5  # Filter frequency
     fs = 100  # Hz
     low_pass = f/(fs/2)
@@ -65,7 +72,7 @@ def apply_filter(data, trigger=5):
     for i in range(1, len(stance_periods)):
         previous_end = stance_periods[i-1].stop
         current_start = stance_periods[i].start
-        data.loc[previous_end:current_start, columns] = 0
+        data.loc[previous_end-10:current_start+10, columns] = 0
     return data
 
 
@@ -140,16 +147,13 @@ if __name__ == '__main__':
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
 
-    subject = "06"  # input(f"insert subject number in XX format: ")
-    date = subject_details[f"S{subject}"]["date"]
-    w = subject_details[f"S{subject}"]["weight"]
-
-    input_path = f"../Data/S{subject}/{date}/Dynamics/Force_Data/"
-    output_path = f"../OpenSim/S{subject}/{date}/Dynamics/Force_Data/"
     # Get files names
     trials = ["train_01", "train_02", "val", "test"]
-    files = [f"S{subject}_{trial}_forceplate_1.csv" for trial in trials]
+    subject = "06"  # input(f"insert subject number in XX format: ")
+
+    input_path, output_path, files = get_IO_dir(subject, trials)
     # Process each trial
+    w = subject_details[f"S{subject}"]["weight"]
     for i, file in enumerate(files):
         # Load Left force plates data
         data = pd.read_csv(input_path+file, header=31)
