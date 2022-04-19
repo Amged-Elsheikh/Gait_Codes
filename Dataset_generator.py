@@ -5,17 +5,26 @@ import numpy as np
 import json
 
 
-def merge_joints(IK: pd.DataFrame, ID: pd.DataFrame, periods: pd.DataFrame) -> pd.DataFrame:
+def merge_joints(IK: pd.DataFrame, ID: pd.DataFrame) -> pd.DataFrame:
     """Join kinematics and kinetics data into a single pandas dataframe along with record periods dataframe which used to filter the dataset by removing all periods where ID solution was not available (no GRF data)
     """
     # Merge kinematics and kinetics data
     joints_data = pd.merge(IK, ID, on='time', how='inner')
-    # Merge the columns that tells when to make measurements (record periods)
-    joints_data_with_events = pd.merge(
-        joints_data, periods, on='time', how='inner')
     # Reset time to zero to match EMG
-    joints_data_with_events = reset_time(joints_data_with_events)
-    return joints_data_with_events
+    joints_data = reset_time(joints_data)
+    return joints_data
+
+
+def select_walking_trials(joints_data, periods):
+    left = periods[['left_start', 'left_end']].dropna()
+    # work on left side
+    left_joints = ['knee_angle_l_moment','ankle_angle_l_moment']
+    joints_data.loc[:left.iloc[0,0], left_joints] = np.nan
+    for i in range(1, len(left)):
+        previous_end = left.loc[i-1,'left_end']
+        current_start = left.loc[i, 'left_start']
+        joints_data.loc[previous_end:current_start, left_joints] = np.nan
+    return joints_data
 
 
 def reset_time(data: pd.DataFrame) -> pd.DataFrame:
@@ -72,17 +81,14 @@ def get_dataset(subject=None) -> None:
         # Load ID data
         ID = pd.read_csv(id_file, header=6, sep='\t', usecols=[0, 17, 19])
         # Load record interval data
-        periods = pd.read_csv(periods_file, index_col="time")
+        periods = pd.read_csv(periods_file)
         # Load EMG features
         features = pd.read_csv(features_file, index_col='time')
         # Merge IK, ID & record intervals together to create joint's dataset
-        joints_data = merge_joints(IK, ID, periods)
+        joints_data = merge_joints(IK, ID)
+        joints_data = select_walking_trials(joints_data, periods)
         # Merge EMG features with joints data and down sample joints data to match the EMG features
         Dataset = merge_IO(features, joints_data)
-        # Remove Kinetics data that are not in the recording period and then remove the periods columns
-        Dataset.loc[Dataset['left_side'] == False, [
-            'knee_angle_l_moment', 'ankle_angle_l_moment']] = np.nan
-        Dataset.drop(columns=['left_side'], inplace=True)  # Drop periods columns
         # Rename column and save the dataset
         new_col = {'knee_angle_l': "knee angle", # Test as input
                    'ankle_angle_l': 'ankle angle', # will not be used
