@@ -16,19 +16,16 @@ def load_data(trial_files):
     return data_L, data_R
 
 
-def remove_system_gap(data_L, data_R):
+def remove_system_gap(data):
     """
     In some cases force plates stop recording and send only zeros. This function will\\
         first set these values for NaN and then interpolate missing values.
     """
-    columns = data_L.columns[3:-1]
-    data_L.loc[data_L[' Fy'] == 0, columns] = np.nan
-    data_R.loc[data_R[' Fy'] == 0, columns] = np.nan
-    data_L.iloc[:, :] = data_L.interpolate(method="linear")
-    data_R.iloc[:, :] = data_R.interpolate(method="linear")
-    data_L.iloc[:, :] = data_L.fillna(method="bfill")
-    data_R.iloc[:, :] = data_R.fillna(method="bfill")
-    return data_L, data_R
+    columns = data.columns[3:-1]
+    data.loc[data[' Fy'] == 0, columns] = np.nan
+    data.iloc[:, :] = data.interpolate(method="linear")
+    data.iloc[:, :] = data.fillna(method="bfill")
+    return data
 
 
 def remove_offset(data_L, data_R, remove=True):
@@ -124,7 +121,8 @@ def shift_data(data_L, data_R, shift_key):
 
 def force_plate_pipeline(data_L, data_R):
     # System stop working someat some frames creating a gap, fill the gaps using interpolatoion
-    data_L, data_R = remove_system_gap(data_L, data_R)
+    data_L= remove_system_gap(data_L)
+    data_L = remove_system_gap(data_R)
     # Remove the delay
     data_L, data_R = shift_data(data_L, data_R, shift_key=trials[i])
     # Remove the offset from the data
