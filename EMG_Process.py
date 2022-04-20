@@ -234,8 +234,6 @@ if __name__ == "__main__":
     with open("subject_details.json", "r") as file:
         subject_details = json.load(file)
 
-    sensors_num = 6
-
     for s in ["03",]:
         emg_to_features(s)
         try:
