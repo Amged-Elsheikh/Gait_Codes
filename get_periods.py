@@ -67,40 +67,37 @@ def get_heel_strike(end: int, data: pd.DataFrame, safety_factor=20):
         end += 1
     return end-3
 
+def periods_df_from_fp_and_motive(df, motive:pd.DataFrame, stance:list ,side="L"):
+    for period in stance[:-1]:
+        try:
+            start = get_toe_off(period.start, motive.loc[:, f"{side}.Heel"])
+            end = get_heel_strike(period.stop, motive.loc[:, f"{side}.Heel"])
+            df.loc[len(df)] = [start, end, end-start]
+        except:
+            pass
+    return df
+
 
 def get_periods(subject=None, trilas=["train_01", "train_02", "val", "test"], sides=["L", "R"]):
+    
     if subject == None:
         subject = input("Enter subject number in XX format\n")
     date = subject_details[f"S{subject}"]["date"]
+    
     for trial in trilas:
         output_dir = f"../Outputs/S{subject}/{date}/record_periods/S{subject}_{trial}_record_periods.csv"
         motive = load_heels_data(subject, trial)
         motive.columns = ['L.Heel', "R.Heel"]
-        left_periods = pd.DataFrame(
-            columns=['left_start', 'left_end', 'left_time'])
-        right_periods = pd.DataFrame(
-            columns=['right_start', 'right_end', 'right_time'])
+        left_periods = pd.DataFrame(columns=['left_start', 'left_end', 'left_time'])
+        right_periods = pd.DataFrame(columns=['right_start', 'right_end', 'right_time'])
         for side in sides:
             grf_data = load_grf(subject, trial, side)
             stance = grf.grf_periods(grf_data)
             if side == 'L':
-                for period in stance[:-1]:
-                    try:
-                        start = get_toe_off(period.start, motive.loc[:, "L.Heel"])
-                        end = get_heel_strike(period.stop, motive.loc[:, "L.Heel"])
-                        left_periods.loc[len(left_periods)] = [
-                            start, end, end-start]
-                    except:
-                        pass
+                left_periods = periods_df_from_fp_and_motive(left_periods, motive, stance, side)
             elif side == 'R':
-                for period in stance[:-1]:
-                    try:
-                        start = get_toe_off(period.start, motive.loc[:, "R.Heel"])
-                        end = get_heel_strike(period.stop, motive.loc[:, "R.Heel"])
-                        right_periods.loc[len(right_periods)] = [
-                            start, end, end-start]
-                    except:
-                        pass
+                right_periods = periods_df_from_fp_and_motive(right_periods, motive, stance, side)
+
         periods = pd.concat([left_periods, right_periods])
         periods.to_csv(output_dir)
 
