@@ -5,10 +5,11 @@
         "weight": 83,
         "age": 25,
         "height": 183,
+        "sides": ["L","R"],
         "delay": {"train_01":[-10,-10],
             "train_02":[-13,-13],
-            "val":[-12,-12],
-            "test":[-3,-3]},
+            "val":[-11,-11],
+            "test":[-2,-2]},
 
         "emg_sync": {"train_01":{"start":5.61, "length":185},
                      "train_02":{"start":4.94, "length":183},
@@ -21,10 +22,11 @@
         "weight": 60,
 		"age":23,
 		"height":180,
+        "sides": ["L","R"],
         "delay": {"train_01":[-13,-13],
                   "train_02":[-4,-4],
-                  "val":[-6,-6],
-                  "test":[-5,-5]},
+                  "val":[-3,-3],
+                  "test":[-7,-7]},
 
         "emg_sync": {"train_01":{"start":7.90, "length":192.9},
                      "train_02":{"start":7.09, "length":186},
@@ -37,15 +39,16 @@
         "weight": 67.8,
 		"age":0,
 		"height":0,
-        "delay": {"train_01":[0],
-                  "train_02":[0],
-                  "val":[0],
-                  "test":[0]},
+        "sides": ["L","R"],
+        "delay": {"train_01":[0,0],
+                  "train_02":[0,0],
+                  "val":[0,0],
+                  "test":[0,0]},
 
-        "emg_sync": {"train_01":{"start":0, "length":0},
-                     "train_02":{"start":0, "length":0},
-                     "val":{"start":0, "length":0},
-                     "test":{"start":0, "length":0}}
+        "emg_sync": {"train_01":{"start":7.58, "length":177},
+                     "train_02":{"start":7.73, "length":188},
+                     "val":{"start":9.12, "length":183},
+                     "test":{"start":7.49, "length":69}}
     },
     "S04": {
         "date": 20211122,
@@ -53,6 +56,7 @@
         "weight": 71,
 		"age":23,
 		"height":172,
+        "sides": ["L","R"],
         "delay": {"train_01":[-11,-11],
                   "train_02":[0,0],
                   "val":[-4,-4],
@@ -69,31 +73,61 @@
         "weight": 55.4,
 		"age":23,
 		"height":163,
-        "delay": {"train_01":[12,12],
-                  "train_02":[14,14],
-                  "val":[3,3],
-                  "test":[4,4]},
+        "sides": ["L","R"],
+        "delay": {"train_01":[-13,-13],
+                  "train_02":[-16,-16],
+                  "val":[-5,-5],
+                  "test":[-4,-4]},
 
         "emg_sync": {"train_01":{"start":0, "length":0},
                      "train_02":{"start":0, "length":0},
                      "val":{"start":0, "length":0},
                      "test":{"start":0, "length":0}}
     },
-    "S06": {
-        "date": 20220406,
-        "name": "Koseki",
-        "weight": 67,
-		"age":22,
-		"height":180,
-        "delay": {"train_01":[-4],
-                  "train_02":[-8],
-                  "val":[-8], 
-                  "test":[-11]},
 
-        "emg_sync": {"train_01":{"start":7.27, "length":187},
-                     "train_02":{"start":7.37, "length":173},
-                     "val":{"start":5.48, "length":79},
-                     "test":{"start":6.30, "length":67}}
-        }
+"S06": {
+    "date": 20220406,
+    "name": "Koseki",
+    "weight": 67,
+    "age":22,
+    "height":180,
+    "sides": ["L"],
+    "delay": {"train_01":[-4],
+              "train_02":[-8],
+              "val":[-8], 
+              "test":[-11]},
+
+    "emg_sync": {"train_01":{"start":7.27, "length":187},
+                 "train_02":{"start":7.37, "length":173},
+                 "val":{"start":5.48, "length":79},
+                 "test":{"start":6.30, "length":67}},
+
+    "motive_sync": {"train_01":{"start":5, "end":192},
+                    "train_02":{"start":4, "end":177},
+                    "val":{"start":3, "end":82},
+                    "test":{"start":4, "end":71}}
+    },
+
+    "S07": {
+        "date": 20220411,
+        "name": "Adam",
+        "weight": 74,
+        "age":23,
+        "height":172,
+        "sides": ["R"],
+        "delay": {"train_01":[-9],
+                  "train_02":[-6],
+                  "val":[-10], 
+                  "test":[-15]},
+    
+        "emg_sync": {"train_01":{"start":5.87, "length":187},
+                     "train_02":{"start":5.94, "length":200},
+                     "val":{"start":6.23, "length":64},
+                     "test":{"start":5.50, "length":67}},
+
+        "motive_sync": {"train_01":{"start":4, "end":191},
+                    "train_02":{"start":4, "end":204},
+                    "val":{"start":4, "end":68},
+                    "test":{"start":2.9, "end":69.9}}
 }
-
+}
