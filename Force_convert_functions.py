@@ -72,11 +72,12 @@ def apply_filter(data, trigger=3):
             data.loc[stance, " My"]/data.loc[stance, " Fz"]
         data.loc[stance, " Cy"] = data.loc[stance, " Mx"] / \
             data.loc[stance, " Fz"]
+    # Make zeros outside forceplate
     columns.extend([" Cx", " Cy", " Cz"])
-    data.loc[0:stance_periods[0].start, columns] = 0
+    data.loc[0:stance_periods[0].start-20, columns] = 0
     for i in range(1, len(stance_periods)):
-        previous_end = stance_periods[i-1].stop
-        current_start = stance_periods[i].start
+        previous_end = stance_periods[i-1].stop + 20
+        current_start = stance_periods[i].start - 20
         data.loc[previous_end:current_start, columns] = 0
     return data
 
@@ -179,7 +180,7 @@ if __name__ == "__main__":
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
         
-    subject = "02"#input(f"insert subject number in XX format: ")
+    subject = input(f"insert subject number in XX format: ")
     date = subject_details[f"S{subject}"]["date"]
     input_path = f"../Data/S{subject}/{date}/Dynamics/Force_Data/"
     output_path = f"../OpenSim/S{subject}/{date}/Dynamics/Force_Data/"
