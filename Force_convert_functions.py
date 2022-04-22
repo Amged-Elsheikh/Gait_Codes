@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+pd.set_option('mode.chained_assignment', None)
 from scipy.signal import butter, filtfilt
 import re
 import os
@@ -20,7 +21,7 @@ def remove_system_gap(data):
         first set these values for NaN and then interpolate missing values.
     """
     columns = data.columns[3:]
-    data.loc[data[' Fz'] == 0, columns] = np.nan
+    data.loc[data.loc[:,' Fz'] == 0, columns] = np.nan
     data.iloc[:, :] = data.interpolate(method="linear")
     data.iloc[:, :] = data.fillna(method="bfill")
     return data
@@ -45,7 +46,7 @@ def grf_periods(data, trigger=5):
         elif point < trigger and start != None:
             # sometimes the subject might enter forceplate and leave it immediately because he enter with wrong foot. the filter will raise error if the number of points is less than 15
             if i-start >= 20:
-                stance_periods.append(slice(start-3, i+3))
+                stance_periods.append(slice(start-10, i+10))
             start = None
     return stance_periods
 
@@ -60,19 +61,16 @@ def apply_filter(data, trigger=5):
                " Mx", " My", " Mz", ]
     # apply filter
     for stance in stance_periods:
-        data.loc[stance, columns] = filtfilt(
-            b2, a2, data.loc[stance, columns], axis=0)
+        data.loc[stance, columns] = filtfilt(b2, a2, data.loc[stance, columns], axis=0)
         # CoP are calculated from the Force and Moment. Filter CoP by recalculate it from the filtered data. Note that the CoP will grow when foot outside force plate.
-        data.loc[stance, " Cx"] = - \
-            data.loc[stance, " My"]/data.loc[stance, " Fz"]
-        data.loc[stance, " Cy"] = data.loc[stance, " Mx"] / \
-            data.loc[stance, " Fz"]
-    columns.extend([" Cx", " Cy", " Cz"])
-    data.loc[0:stance_periods[0].start, columns] = 0
-    for i in range(1, len(stance_periods)):
-        previous_end = stance_periods[i-1].stop
-        current_start = stance_periods[i].start
-        data.loc[previous_end-10:current_start+10, columns] = 0
+        data.loc[stance, " Cx"] = -data.loc[stance, " My"]/data.loc[stance, " Fz"]
+        data.loc[stance, " Cy"] = data.loc[stance, " Mx"] / data.loc[stance, " Fz"]
+    # columns.extend([" Cx", " Cy", " Cz"])
+    # data.loc[0:stance_periods[0].start, columns] = 0
+    # for i in range(1, len(stance_periods)):
+    #     previous_end = stance_periods[i-1].stop
+    #     current_start = stance_periods[i].start
+    #     data.loc[previous_end-10:current_start+10, columns] = 0
     return data
 
 
@@ -82,25 +80,25 @@ def system_match(data):
     Remove system gaps if any.
     """
     # To apply rotation, change column names.
-    col_names = {" Fx": "Fx", " Fy": "Fz", " Fz": "Fy",
-                 " Mx": "Mx", " My": "Mz", " Mz": "My",
-                 " Cx": "Cx", " Cy": "Cz", " Cz": "Cy",
+    col_names = {" Fx": " Fx", " Fy": " Fz", " Fz": " Fy",
+                 " Mx": " Mx", " My": " Mz", " Mz": " My",
+                 " Cx": " Cx", " Cy": " Cz", " Cz": " Cy",
                  " MocapTime": "time"}
     data.rename(columns=col_names, inplace=True)
     # Match opti-track and force Plates origins
-    data.loc[:, "Cx"] = data["Cx"] + 0.25
-    data.loc[:, "Cz"] = data["Cz"] + 0.25
+    data.loc[:, " Cx"] = data[" Cx"] + 0.25
+    data.loc[:, " Cz"] = data[" Cz"] + 0.25
     # Complete the rotation
-    change_sign = ["Fx", "Fz"]
-    data.loc[:, change_sign] = -data[change_sign]
+    change_sign = [" Fx", " Fz"]
+    data.loc[:, change_sign] = -data.loc[:, change_sign]
     return data
 
 
 # There is a delay in system (various delay may change )
 def shift_data(data, shift_key):
-    shift_columns = ['Fx', 'Fz', 'Fy',
-                     'Mx', 'Mz', 'My',
-                     'Cx', 'Cz', 'Cy']
+    shift_columns = [' Fx', ' Fz', ' Fy',
+                     ' Mx', ' Mz', ' My',
+                     ' Cx', ' Cz', ' Cy']
     shift_value = subject_details[f"S{subject}"]["delay"][shift_key][0]
     data.loc[:, shift_columns] = data[shift_columns].shift(
         shift_value, fill_value=0)
@@ -108,21 +106,21 @@ def shift_data(data, shift_key):
 
 
 def col_rearrange(data):
-    return data[["time", "Fx", "Fy", "Fz", "Mx", "My", "Mz", "Cx", "Cy", "Cz"]]
+    return data[["time", " Fx", " Fy", " Fz", " Mx", " My", " Mz", " Cx", " Cy", " Cz"]]
 
 
 def GRF_data(data):
     # make sure columns are weell arranged
     data = col_rearrange(data)
-    L_columns_names_mapper = {"Fx": "1_ground_force_vx",
-                              "Fy": "1_ground_force_vy",
-                              "Fz": "1_ground_force_vz",
-                              "Cx": "1_ground_force_px",
-                              "Cy": "1_ground_force_py",
-                              "Cz": "1_ground_force_pz",
-                              "Mx": "1_ground_torque_x",
-                              "My": "1_ground_torque_y",
-                              "Mz": "1_ground_torque_z"}
+    L_columns_names_mapper = {" Fx": "1_ground_force_vx",
+                              " Fy": "1_ground_force_vy",
+                              " Fz": "1_ground_force_vz",
+                              " Cx": "1_ground_force_px",
+                              " Cy": "1_ground_force_py",
+                              " Cz": "1_ground_force_pz",
+                              " Mx": "1_ground_torque_x",
+                              " My": "1_ground_torque_y",
+                              " Mz": "1_ground_torque_z"}
     data.rename(columns=L_columns_names_mapper, inplace=True)
     return data
 
@@ -149,7 +147,7 @@ if __name__ == '__main__':
 
     # Get files names
     trials = ["train_01", "train_02", "val", "test"]
-    subject = "06"  # input(f"insert subject number in XX format: ")
+    subject = "07"  # input(f"insert subject number in XX format: ")
 
     input_path, output_path, files = get_IO_dir(subject, trials)
     # Process each trial
@@ -157,18 +155,26 @@ if __name__ == '__main__':
     for i, file in enumerate(files):
         # Load Left force plates data
         data = pd.read_csv(input_path+file, header=31)
+        
         # System sometimes stop sending data for few frames
         data = remove_system_gap(data)
-        # Remove the offset from the data
-        data = remove_offset(data)
-        # Apply low pass filter
-        data = apply_filter(data)
-        # Match devices coordinate system
-        data = system_match(data)
+        
         # Remove the delay
         data = shift_data(data, shift_key=trials[i])
+        
+        # Remove the offset from the data
+        data = remove_offset(data)
+        
+        # Apply low pass filter
+        data = apply_filter(data)
+        
+        # Match devices coordinate system
+        data = system_match(data)
+        
+        
         # Make sure delta time is 0.01
         data['time'] = data["MocapFrame"]/100
+        
         # Rename columns to match OpenSim default names
         force_data = GRF_data(data)
         # Save force data
