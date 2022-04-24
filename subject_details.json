@@ -129,5 +129,28 @@
                     "train_02":{"start":4, "end":204},
                     "val":{"start":4, "end":68},
                     "test":{"start":2.9, "end":69.9}}
+},
+
+"S08": {
+    "date": 20220422,
+    "name": "Amged",
+    "weight": 80,
+    "age":27,
+    "height":183,
+    "sides": ["L"],
+    "delay": {"train_01":[0],
+              "train_02":[0],
+              "val":[0], 
+              "test":[0]},
+
+    "emg_sync": {"train_01":{"start":6.47, "length":194},
+                "train_02":{"start":5.68, "length":194},
+                "val":{"start":10.36, "length":62},
+                "test":{"start":5.84, "length":84}},
+
+    "motive_sync": {"train_01":{"start":10, "end":204},
+                "train_02":{"start":10, "end":204},
+                "val":{"start":14, "end":76},
+                "test":{"start":4, "end":88}}
 }
 }
