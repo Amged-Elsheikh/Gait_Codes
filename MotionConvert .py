@@ -1,31 +1,19 @@
-"""
-Created on Thu Jul 29 14:26:07 2021
-
-@author: amged
-"""
 # Import libraries
 import pandas as pd
 import json
-import os
 import re
 
 
 def get_IO_dir(subject=None, motion_type="dynamic"):
-    """[summary]
 
-    Args:
-        subject (string, optional): [Subject number in the format XX. If the value is\
-            None then user will be asked manually input subject's number]. Defaults to None.
-        motion_type (str, optional): [Either 'static' or 'dynamic']. Defaults to "dynamic".
-
-    Returns:
-        [list]: [a list contains inputs files directories.]
-        [list]: [a list contains outputs files directories]
-    """
+    # If subject number not specified, user should write it manually
     if subject == None:
         subject = input("insert subject number: ")
     # Create motion Setting File
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
     date = subject_details[f"S{subject}"]["date"]
+
     if motion_type == "static":
         # Inputs file path
         Inputs = [f"../Data/S{subject}/{date}/Statics/S{subject}_static.csv"]
@@ -46,6 +34,7 @@ def get_IO_dir(subject=None, motion_type="dynamic"):
         # Get inputs and outputs full directories
         Inputs = list(map(lambda file: input_path+file, Inputs))
         Outputs = list(map(lambda file: output_path+file, Outputs))
+
     return Inputs, Outputs
 
 
@@ -53,11 +42,11 @@ def get_markers_labels(Input):
     """
     Input: input data path. Type: string
     """
-    # Getting Markers labels
+    # Getting markers_trajectories labels
     Markers_Label = pd.read_csv(Input, header=2, nrows=0).columns.values[2:]
     Markers_Label = list(
         map(lambda x: re.sub('\.[0-9]$', "", x), Markers_Label))
-    # Do not use set because we do not want to change the order of markers
+    # Do not use set because we do not want to change the order of markers_trajectories
     unique_labels = []
     for label in Markers_Label:
         if label not in unique_labels:
@@ -66,32 +55,36 @@ def get_markers_labels(Input):
     return unique_labels
 
 
-def convert_data(Input, Output, Markers_number, subject):
+def load_trajectories(subject, Input):
     """
     Input & Output are pathes
     """
-    Markers = pd.read_csv(Input, header=5, usecols=[
-                          *range(0, 3*Markers_number+2)])
-    Markers['Time (Seconds)'] = Markers["Frame"]/100
-    # Trim trials
-    trial = re.sub(".*S[0-9]*_","",Input)
-    trial = re.sub("\.[a-zA-z]*","",trial)
+    markers_trajectories = pd.read_csv(Input, header=5)
+    markers_trajectories['Time (Seconds)'] = markers_trajectories["Frame"]/100
+    # Get trial name
+    trial = re.sub(".*S[0-9]*_", "", Input)
+    trial = re.sub("\.[a-zA-z]*", "", trial)
     trials = ('train_01', 'train_02', 'val', 'test')
+
     if trial in trials:
+        with open("subject_details.json", "r") as f:
+            subject_details = json.load(f)
+
         record_period = subject_details[f"S{subject}"]["motive_sync"][trial]
-        record_start = record_period['start']*100
-        record_end = record_period['end']*100
-        Markers = Markers.iloc[record_start:record_end+1, :]
-    Markers.to_csv(Output,  sep='\t', index=False, header=False)
-    num_frames = len(Markers.iloc[:, 0])
-    return num_frames
+        record_start = record_period['start'] * 100
+        record_end = record_period['end'] * 100
+        markers_trajectories = markers_trajectories.iloc[record_start:record_end + 1, :]
+
+    return markers_trajectories
 
 
-def process_trc(Output, Markers_Label, num_frames):
+def process_trc(markers_trajectories, Output, Markers_Label):
     New_label_Coor = '\t'
     New_label_Mar = 'Frame#\tTime'
     Markers_number = len(Markers_Label)
+    num_frames = len(markers_trajectories)
 
+    markers_trajectories.to_csv(Output,  sep='\t', index=False, header=False)
     for i in range(0, Markers_number):
         New_label_Coor = f"{New_label_Coor}\tX{str(i+1)}\tY{str(i+1)}\tZ{str(i+1)}"
     for i in range(0, Markers_number-1):
@@ -108,24 +101,31 @@ def process_trc(Output, Markers_Label, num_frames):
         f.write(Contents + New_label_Mar + New_label_Coor + '\n\n' + old)
 
 
-def csv2trc(subject=None):
+def csv2trc(subject=None, motion_types=None):
     if subject == None:
         subject = input("insert subject number in XX format: ")
-    motion_types = ("static", "dynamic")
+
+    if motion_types == None:
+        motion_types = ("static", "dynamic")
+    elif type(motion_types) == str:
+        motion_types = [motion_types, ]
+
     flag = True
     for motion_type in motion_types:
         print(f"{motion_type} Data")
+        # Get inputes and outputs directories
         Inputs, Outputs = get_IO_dir(subject, motion_type=motion_type)
+        # Loop in trials
         for Input, Output in zip(Inputs, Outputs):
+            # Get experement labels once
             if flag:
                 Markers_Label = get_markers_labels(Input)
                 flag = False
-            num_frames = convert_data(Input, Output, Markers_number=len(Markers_Label), subject=subject)
-            process_trc(Output, Markers_Label, num_frames)
+
+            markers_trajectories = load_trajectories(subject, Input)
+            process_trc(markers_trajectories, Output, Markers_Label)
 
 
 if __name__ == '__main__':
     # Load subject details
-    with open("subject_details.json", "r") as f:
-        subject_details = json.load(f)
-    csv2trc()
+    csv2trc(subject=None, motion_types=None)
