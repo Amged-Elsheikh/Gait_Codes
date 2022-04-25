@@ -66,15 +66,22 @@ def get_markers_labels(Input):
     return unique_labels
 
 
-def convert_data(Input, Output, Markers_number):
+def convert_data(Input, Output, Markers_number, subject):
     """
     Input & Output are pathes
     """
     Markers = pd.read_csv(Input, header=5, usecols=[
                           *range(0, 3*Markers_number+2)])
-    # After installing the esync, sometimes the sampling rate becomes 100±1 Hz
-    Markers['Time (Seconds)'] = [
-        i/100 for i in range(len(Markers['Time (Seconds)']))]
+    Markers['Time (Seconds)'] = Markers["Frame"]/100
+    # Trim trials
+    trial = re.sub(".*S[0-9]*_","",Input)
+    trial = re.sub("\.[a-zA-z]*","",trial)
+    trials = ('train_01', 'train_02', 'val', 'test')
+    if trial in trials:
+        record_period = subject_details[f"S{subject}"]["motive_sync"][trial]
+        record_start = record_period['start']*100
+        record_end = record_period['end']*100
+        Markers = Markers.iloc[record_start:record_end+1, :]
     Markers.to_csv(Output,  sep='\t', index=False, header=False)
     num_frames = len(Markers.iloc[:, 0])
     return num_frames
@@ -113,8 +120,7 @@ def csv2trc(subject=None):
             if flag:
                 Markers_Label = get_markers_labels(Input)
                 flag = False
-            num_frames = convert_data(Input, Output,
-                                      Markers_number=len(Markers_Label))
+            num_frames = convert_data(Input, Output, Markers_number=len(Markers_Label), subject=subject)
             process_trc(Output, Markers_Label, num_frames)
 
 

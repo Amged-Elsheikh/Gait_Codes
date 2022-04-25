@@ -20,12 +20,26 @@ def remove_system_gap(data):
     In some cases force plates stop recording and send only zeros. This function will\\
         first set these values for NaN and then interpolate missing values.
     """
-    columns = data.columns[3:]
+    columns = [' Fx', ' Fy', ' Fz',
+               ' Mx', ' My', " Mz"]
+               
     data.loc[data.loc[:,' Fz'] == 0, columns] = np.nan
     data.iloc[:, :] = data.interpolate(method="linear")
     data.iloc[:, :] = data.fillna(method="bfill")
     return data
 
+def trial_period(data, subject, trial):
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
+        
+    record_period = subject_details[f"S{subject}"]["motive_sync"][trial]
+    fps = subject_details[f"S{subject}"]['FP_sampling_rate']
+    data['time'] = data[" DeviceFrame"]/fps
+    record_start = record_period['start']*fps
+    record_end = record_period['end']*fps
+    data = data.iloc[record_start:record_end+1, :]
+    data.reset_index(inplace=True, drop=True)
+    return data
 
 def remove_offset(data, remove=True):
     if remove:
@@ -42,11 +56,11 @@ def grf_periods(data, trigger=5):
     for i, point in enumerate(data[" Fz"]):
         # set starting point if this is the first point
         if point >= trigger and start == None:
-            start = i
+            start = data.loc[i, "MocapFrame"]
         elif point < trigger and start != None:
             # sometimes the subject might enter forceplate and leave it immediately because he enter with wrong foot. the filter will raise error if the number of points is less than 15
-            if i-start >= 20:
-                stance_periods.append(slice(start-10, i+10))
+            if data.loc[i, "MocapFrame"]-start >= 20:
+                stance_periods.append(slice(start, data.loc[i, "MocapFrame"]))
             start = None
     return stance_periods
 
@@ -56,21 +70,19 @@ def apply_filter(data, trigger=5):
     f = 5  # Filter frequency
     fs = 100  # Hz
     low_pass = f/(fs/2)
-    b2, a2 = butter(N=4, Wn=low_pass, btype='lowpass')
+    b2, a2 = butter(N=6, Wn=low_pass, btype='lowpass')
     columns = [" Fx", " Fy", " Fz",
-               " Mx", " My", " Mz", ]
+               " Mx", " My", " Mz",]
+
+    data[' Cx'] = 0
+    data[' Cy'] = 0
     # apply filter
     for stance in stance_periods:
-        data.loc[stance, columns] = filtfilt(b2, a2, data.loc[stance, columns], axis=0)
+        condition = (data["MocapFrame"]>=stance.start) & (data["MocapFrame"]<=stance.stop)
+        data.loc[condition, columns] = filtfilt(b2, a2, data.loc[condition, columns], axis=0)
         # CoP are calculated from the Force and Moment. Filter CoP by recalculate it from the filtered data. Note that the CoP will grow when foot outside force plate.
-        data.loc[stance, " Cx"] = -data.loc[stance, " My"]/data.loc[stance, " Fz"]
-        data.loc[stance, " Cy"] = data.loc[stance, " Mx"] / data.loc[stance, " Fz"]
-    # columns.extend([" Cx", " Cy", " Cz"])
-    # data.loc[0:stance_periods[0].start, columns] = 0
-    # for i in range(1, len(stance_periods)):
-    #     previous_end = stance_periods[i-1].stop
-    #     current_start = stance_periods[i].start
-    #     data.loc[previous_end-10:current_start+10, columns] = 0
+        data.loc[condition, " Cx"] = -data.loc[condition, " My"]/data.loc[condition, " Fz"]
+        data.loc[condition, " Cy"] =  data.loc[condition, " Mx"] / data.loc[condition, " Fz"]
     return data
 
 
@@ -82,8 +94,7 @@ def system_match(data):
     # To apply rotation, change column names.
     col_names = {" Fx": " Fx", " Fy": " Fz", " Fz": " Fy",
                  " Mx": " Mx", " My": " Mz", " Mz": " My",
-                 " Cx": " Cx", " Cy": " Cz", " Cz": " Cy",
-                 " MocapTime": "time"}
+                 " Cx": " Cx", " Cy": " Cz", " Cz": " Cy",}
     data.rename(columns=col_names, inplace=True)
     # Match opti-track and force Plates origins
     data.loc[:, " Cx"] = data[" Cx"] + 0.25
@@ -131,7 +142,7 @@ def save_force_data(force_data, output_path, output_name):
         os.remove(output_file)
     force_data.to_csv(output_file,  sep='\t', index=False)
     nRows = len(force_data)  # end_time - start_time + 1
-    nColumns = 10
+    nColumns = len(force_data.columns)
 
     with open(output_file, "r+") as f:
         old = f.read()  # read everything in the file
@@ -147,34 +158,33 @@ if __name__ == '__main__':
 
     # Get files names
     trials = ["train_01", "train_02", "val", "test"]
-    subject = "07"  # input(f"insert subject number in XX format: ")
+    subject = "08"  # input(f"insert subject number in XX format: ")
 
     input_path, output_path, files = get_IO_dir(subject, trials)
     # Process each trial
     w = subject_details[f"S{subject}"]["weight"]
     for i, file in enumerate(files):
         # Load Left force plates data
-        data = pd.read_csv(input_path+file, header=31)
+        data = pd.read_csv(input_path+file, header=31, low_memory=False)
+        
+        # prepare time
+        data = trial_period(data, subject, trials[i])
         
         # System sometimes stop sending data for few frames
         data = remove_system_gap(data)
-        
+
         # Remove the delay
         data = shift_data(data, shift_key=trials[i])
         
         # Remove the offset from the data
-        data = remove_offset(data)
+        # data = remove_offset(data)
         
         # Apply low pass filter
         data = apply_filter(data)
         
         # Match devices coordinate system
         data = system_match(data)
-        
-        
-        # Make sure delta time is 0.01
-        data['time'] = data["MocapFrame"]/100
-        
+
         # Rename columns to match OpenSim default names
         force_data = GRF_data(data)
         # Save force data

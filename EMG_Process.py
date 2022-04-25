@@ -237,7 +237,7 @@ if __name__ == "__main__":
     sensors_num = 6
 
     # for s in ["01","02", "04"]:
-    emg_to_features("06")
+    emg_to_features("08")
         # try:
         #     # If all subject data files exisit, the dataset will be automatically generated/updated
         #     from Dataset_generator import *
