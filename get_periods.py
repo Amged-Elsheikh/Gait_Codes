@@ -16,6 +16,12 @@ def load_grf(subject, trial, side="L"):
         grf_paths = f"{grf_paths}2.csv"
     grf_data = pd.read_csv(grf_paths, header=31)
     grf_data = grf.remove_system_gap(grf_data)
+    # Downsample to 100 Hz if forceplate work on 1KHz
+    grf_data = grf.trial_period(grf_data, subject, trial)
+    fps = subject_details[f"S{subject}"]['FP_sampling_rate']
+    if fps == 1000:
+        grf_data = grf_data.loc[grf_data[' DeviceFrame']%10==0]
+        grf_data.reset_index(inplace=True, drop=True)
     return grf_data
 
 
@@ -80,30 +86,24 @@ def get_periods(subject=None, trilas=["train_01", "train_02", "val", "test"], si
             columns=['left_start', 'left_end', 'left_time'])
         right_periods = pd.DataFrame(
             columns=['right_start', 'right_end', 'right_time'])
+
+        data_dict = {"L": left_periods, "R": right_periods}
         for side in sides:
             grf_data = load_grf(subject, trial, side)
+            # Periods unit is Mocap Frame
             stance = grf.grf_periods(grf_data)
-            if side == 'L':
-                for period in stance[:-1]:
-                    try:
-                        start = get_toe_off(period.start, motive.loc[:, "L.Heel"])
-                        end = get_heel_strike(period.stop, motive.loc[:, "L.Heel"])
-                        left_periods.loc[len(left_periods)] = [
-                            start, end, end-start]
-                    except:
-                        pass
-            elif side == 'R':
-                for period in stance[:-1]:
-                    try:
-                        start = get_toe_off(period.start, motive.loc[:, "R.Heel"])
-                        end = get_heel_strike(period.stop, motive.loc[:, "R.Heel"])
-                        right_periods.loc[len(right_periods)] = [
-                            start, end, end-start]
-                    except:
-                        pass
+            for period in stance:
+                try:
+                    # Take some extra frames when getting T.O
+                    start = get_toe_off(period.start, motive.loc[:, f"{side}.Heel"]) - 3
+                    end = get_heel_strike(period.stop, motive.loc[:, f"{side}.Heel"])
+                    data_dict[side].loc[len(data_dict[side])] = [start, end, end-start]
+                except:
+                    pass
+            
         periods = pd.concat([left_periods, right_periods])
         periods.to_csv(output_dir)
 
 
 if __name__ == '__main__':
-    get_periods("06",sides=["L",])
+    get_periods("08",sides=["L",])
