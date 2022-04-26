@@ -20,14 +20,14 @@ rcParams['ps.fonttype'] = 42
 
 # # Window generator creation function
 def create_window_generator(
-    subject=None, input_width=20, shift=3, label_width=1, batch_size=64, features=["RMS"], add_knee=False, out_labels=["ankle moment"]
+    subject=None, input_width=20, shift=3, label_width=1, batch_size=64, features=["RMS"], sensors=['sensor 1'], add_knee=False, out_labels=["ankle moment"]
 ):
     if subject == None:
         subject = input("Please input subject number in XX format: ")
     if len(subject) == 1:
         subject = "0" + subject
     # Get subject weight.
-    dataHandler = DataHandler(subject, features, add_knee, out_labels)
+    dataHandler = DataHandler(subject, features, sensors, add_knee, out_labels)
     # #Create Window object
     window_object = WindowGenerator(dataHandler, input_width,
                                     label_width, shift, batch_size)
@@ -130,23 +130,33 @@ if __name__ == "__main__":
         subject_details = json.load(f)
 
     # Choose features and labels
-    features = ["RMS", "ZC"]  # Used EMG features
-    add_knee = False  # True if you want to use knee angle as an extra input
-    out_labels = ["knee moment", "ankle moment"]  # Labels to be predicted
-    loss_factor = 3.0  # Loss factor to prevent ankle slip
+    # Used EMG features
+    features = ["RMS", "AR"]
+
+    # Used sensors
+    sensors = [6, 7]
+    sensors = [f'sensor {x}' for x in sensors]
+    # True if you want to use knee angle as an extra input
+    add_knee = False
+    # Labels to be predicted
+    out_labels = ["ankle moment"]
+    # Loss factor to prevent ankle slip
+    loss_factor = 0.0
     # Window object parameters
     input_width = 15
-    shift = 3
+    shift = 1
     label_width = 1
-    batch_size = 64
+    batch_size = 128
 
     window_generator = partial(create_window_generator,
                                input_width=input_width, shift=shift,
                                label_width=label_width,
-                               batch_size=batch_size, features=features, add_knee=add_knee, out_labels=out_labels)
+                               batch_size=batch_size, features=features, 
+                               sensors = sensors, add_knee=add_knee,
+                               out_labels=out_labels)
     model_dic = {}
-    model_dic["FF model"] = create_ff_model
-    model_dic["CNN model"] = create_conv_model
+    # model_dic["FF model"] = create_ff_model
+    # model_dic["CNN model"] = create_conv_model
     model_dic["LSTM model"] = create_lstm_model
 
     r2_results = pd.DataFrame(columns=model_dic.keys())
@@ -155,13 +165,14 @@ if __name__ == "__main__":
     predictions = {}
 
     test_subject = "06"
+    
     for model_name in model_dic:
         history, y_true, y_pred, r2, rmse = train_fit(
             subject=test_subject,
             tested_on=None,
             model_name=model_name,
             epochs=1000,
-            eval_only=True,
+            eval_only=False,
             load_best=False,)
 
         predictions[model_name] = y_pred
@@ -172,7 +183,7 @@ if __name__ == "__main__":
         rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
         nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
         # print(model_name)
-        plt.show()
+    plt.show()
     # plot_models(predictions, y_true,
     #             path=f"../Results/indiviuals/", subject=test_subject)
     plt.close()

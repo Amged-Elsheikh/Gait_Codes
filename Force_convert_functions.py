@@ -1,10 +1,10 @@
+import json
+import os
+import re
+from scipy.signal import butter, filtfilt
 import numpy as np
 import pandas as pd
 pd.set_option('mode.chained_assignment', None)
-from scipy.signal import butter, filtfilt
-import re
-import os
-import json
 
 
 def get_IO_dir(subject, trials):
@@ -22,16 +22,17 @@ def remove_system_gap(data):
     """
     columns = [' Fx', ' Fy', ' Fz',
                ' Mx', ' My', " Mz"]
-               
-    data.loc[data.loc[:,' Fz'] == 0, columns] = np.nan
+
+    data.loc[data.loc[:, ' Fz'] == 0, columns] = np.nan
     data.iloc[:, :] = data.interpolate(method="linear")
     data.iloc[:, :] = data.fillna(method="bfill")
     return data
 
+
 def trial_period(data, subject, trial):
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
-        
+
     record_period = subject_details[f"S{subject}"]["motive_sync"][trial]
     fps = subject_details[f"S{subject}"]['FP_sampling_rate']
     data['time'] = data[" DeviceFrame"]/fps
@@ -40,6 +41,7 @@ def trial_period(data, subject, trial):
     data = data.iloc[record_start:record_end+1, :]
     data.reset_index(inplace=True, drop=True)
     return data
+
 
 def remove_offset(data, remove=True):
     if remove:
@@ -72,17 +74,21 @@ def apply_filter(data, trigger=5):
     low_pass = f/(fs/2)
     b2, a2 = butter(N=6, Wn=low_pass, btype='lowpass')
     columns = [" Fx", " Fy", " Fz",
-               " Mx", " My", " Mz",]
+               " Mx", " My", " Mz", ]
 
     data[' Cx'] = 0
     data[' Cy'] = 0
     # apply filter
     for stance in stance_periods:
-        condition = (data["MocapFrame"]>=stance.start) & (data["MocapFrame"]<=stance.stop)
-        data.loc[condition, columns] = filtfilt(b2, a2, data.loc[condition, columns], axis=0)
+        condition = (data["MocapFrame"] >= stance.start) & (
+            data["MocapFrame"] <= stance.stop)
+        data.loc[condition, columns] = filtfilt(
+            b2, a2, data.loc[condition, columns], axis=0)
         # CoP are calculated from the Force and Moment. Filter CoP by recalculate it from the filtered data. Note that the CoP will grow when foot outside force plate.
-        data.loc[condition, " Cx"] = -data.loc[condition, " My"]/data.loc[condition, " Fz"]
-        data.loc[condition, " Cy"] =  data.loc[condition, " Mx"] / data.loc[condition, " Fz"]
+        data.loc[condition, " Cx"] = - \
+            data.loc[condition, " My"]/data.loc[condition, " Fz"]
+        data.loc[condition, " Cy"] = data.loc[condition,
+                                              " Mx"] / data.loc[condition, " Fz"]
     return data
 
 
@@ -94,7 +100,7 @@ def system_match(data):
     # To apply rotation, change column names.
     col_names = {" Fx": " Fx", " Fy": " Fz", " Fz": " Fy",
                  " Mx": " Mx", " My": " Mz", " Mz": " My",
-                 " Cx": " Cx", " Cy": " Cz", " Cz": " Cy",}
+                 " Cx": " Cx", " Cy": " Cz", " Cz": " Cy", }
     data.rename(columns=col_names, inplace=True)
     # Match opti-track and force Plates origins
     data.loc[:, " Cx"] = data[" Cx"] + 0.25
@@ -107,12 +113,13 @@ def system_match(data):
 
 # There is a delay in system (various delay may change )
 def shift_data(data, shift_key):
-    shift_columns = [' Fx', ' Fz', ' Fy',
-                     ' Mx', ' Mz', ' My',
-                     ' Cx', ' Cz', ' Cy']
     shift_value = subject_details[f"S{subject}"]["delay"][shift_key][0]
-    data.loc[:, shift_columns] = data[shift_columns].shift(
-        shift_value, fill_value=0)
+    if shift_value != 0:
+        shift_columns = [' Fx', ' Fz', ' Fy',
+                         ' Mx', ' Mz', ' My',
+                         ' Cx', ' Cz', ' Cy']
+        data.loc[:, shift_columns] = data[shift_columns].shift(
+            shift_value, fill_value=0)
     return data
 
 
@@ -166,22 +173,22 @@ if __name__ == '__main__':
     for i, file in enumerate(files):
         # Load Left force plates data
         data = pd.read_csv(input_path+file, header=31, low_memory=False)
-        
+
         # prepare time
         data = trial_period(data, subject, trials[i])
-        
+
         # System sometimes stop sending data for few frames
         data = remove_system_gap(data)
 
         # Remove the delay
         data = shift_data(data, shift_key=trials[i])
-        
+
         # Remove the offset from the data
         # data = remove_offset(data)
-        
+
         # Apply low pass filter
         data = apply_filter(data)
-        
+
         # Match devices coordinate system
         data = system_match(data)
 

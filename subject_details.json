@@ -151,10 +151,10 @@
               "val":[0], 
               "test":[0]},
 
-    "emg_sync": {"train_01":{"start":6.47, "length":194},
-                "train_02":{"start":5.68, "length":194},
-                "val":{"start":10.36, "length":62},
-                "test":{"start":5.84, "length":84}},
+    "emg_sync": {"train_01":{"start":13.71, "length":194},
+                "train_02":{"start":14.85, "length":194},
+                "val":{"start":18.11, "length":62},
+                "test":{"start":5.93, "length":84}},
 
     "motive_sync": {"train_01":{"start":10, "end":204},
                 "train_02":{"start":10, "end":204},
