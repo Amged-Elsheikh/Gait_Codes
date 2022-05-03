@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
     # Get files names
     trials = ["train_01", "train_02", "val", "test"]
-    subject = "08"  # input(f"insert subject number in XX format: ")
+    subject = input(f"insert subject number in XX format: ")
 
     input_path, output_path, files = get_IO_dir(subject, trials)
     # Process each trial
@@ -184,7 +184,7 @@ if __name__ == '__main__':
         data = shift_data(data, shift_key=trials[i])
 
         # Remove the offset from the data
-        # data = remove_offset(data)
+        data = remove_offset(data)
 
         # Apply low pass filter
         data = apply_filter(data)
