@@ -39,7 +39,8 @@ def load_data(ik_file, id_file, periods_file, features_file):
     # Load ID data
     ID = pd.read_csv(id_file, header=6, sep='\t', usecols=[0, 17, 19])
     # Load record interval data
-    periods = pd.read_csv(periods_file)
+    periods = pd.read_csv(periods_file, index_col=0)
+    
     # Load EMG features
     features = pd.read_csv(features_file, index_col='time')
     return IK, ID, periods, features
@@ -62,6 +63,8 @@ def merge_joints(IK: pd.DataFrame, ID: pd.DataFrame, periods: pd.DataFrame) -> p
         current_start = left.loc[i, 'left_start']/100
         condition = (previous_end<=joints_data['time']) & (joints_data['time']<=current_start)
         joints_data.loc[condition, left_joints] = np.nan
+    condition = joints_data['time'] > left.loc[i, 'left_end']/100
+    joints_data.loc[condition, left_joints] = np.nan
     # Reset time to zero to match EMG
     joints_data = reset_time(joints_data)
     return joints_data
