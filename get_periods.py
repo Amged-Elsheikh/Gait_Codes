@@ -3,11 +3,11 @@ import Force_convert_functions as grf
 import json
 import re
 
-with open("subject_details.json", "r") as f:
-    subject_details = json.load(f)
-
 
 def load_grf(subject, trial, side="L"):
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
+        
     date = subject_details[f"S{subject}"]["date"]
     grf_paths = f"../Data/S{subject}/{date}/Dynamics/Force_Data/S{subject}_{trial}_forceplate_"
     if side == "L":
@@ -52,6 +52,10 @@ def get_heel_starting_index(input_path):
 def load_heels_data(subject, trial):
     if subject == None:
         subject = input("insert subject number: ")
+        
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
+        
     date = subject_details[f"S{subject}"]["date"]
     motive_path = f"../Data/S{subject}/{date}/Dynamics/motion_data/S{subject}_{trial}.csv"
     left, right = get_heel_starting_index(motive_path)
@@ -71,13 +75,18 @@ def get_heel_strike(end: int, data: pd.DataFrame, safety_factor=20):
     end += safety_factor
     while data.iloc[end+1] <= data.iloc[end]:
         end += 1
-    return end-3
+    return end
 
 
-def get_periods(subject=None, trilas=["train_01", "train_02", "val", "test"], sides=["L", "R"]):
+def get_periods(subject=None, trilas=["train_01", "train_02", "val", "test"]):
     if subject == None:
         subject = input("Enter subject number in XX format\n")
+        
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
+        
     date = subject_details[f"S{subject}"]["date"]
+    sides = subject_details[f"S{subject}"]["sides"]
     for trial in trilas:
         output_dir = f"../Outputs/S{subject}/{date}/record_periods/S{subject}_{trial}_record_periods.csv"
         motive = load_heels_data(subject, trial)
@@ -95,8 +104,9 @@ def get_periods(subject=None, trilas=["train_01", "train_02", "val", "test"], si
             for period in stance:
                 try:
                     # Take some extra frames when getting T.O
-                    start = get_toe_off(period.start, motive.loc[:, f"{side}.Heel"]) - 3
-                    end = get_heel_strike(period.stop, motive.loc[:, f"{side}.Heel"])
+                    start = get_toe_off(period.start, motive.loc[:, f"{side}.Heel"]) - 5
+                    # Take less frames when getting H.S
+                    end = get_heel_strike(period.stop, motive.loc[:, f"{side}.Heel"]) - 5
                     data_dict[side].loc[len(data_dict[side])] = [start, end, end-start]
                 except:
                     pass
@@ -106,4 +116,4 @@ def get_periods(subject=None, trilas=["train_01", "train_02", "val", "test"], si
 
 
 if __name__ == '__main__':
-    get_periods("08",sides=["L",])
+    get_periods()
