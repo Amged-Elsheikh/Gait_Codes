@@ -18,7 +18,7 @@ from warnings import simplefilter
 simplefilter(action='ignore', category=FutureWarning)
 
 WINDOW_LENGTH = 0.2
-SLIDING_WINDOW_STRIDE = 0.1
+SLIDING_WINDOW_STRIDE = 0.05
 
 # %%
 
@@ -66,7 +66,7 @@ def load_emg_data(subject: str, emg_file: str) -> pd.DataFrame:
     return emg
 
 
-def remove_outlier(data, detect_factor=10, remove_factor=15):
+def remove_outlier(data, detect_factor=10, remove_factor=20):
     for col in data.columns:
         column_data = data.loc[:, col]
         detector = column_data.apply(np.abs).mean()*detect_factor
@@ -117,7 +117,7 @@ def get_MAV(window):
 
 
 def wave_length(window):
-    return np.sum(abs(np.diff(window)))
+    return np.sum(abs(np.diff(window, axis=0)), axis=0)
 
 
 def get_AR_coeffs(window, num_coeff=6):
@@ -133,19 +133,21 @@ def get_AR_coeffs(window, num_coeff=6):
     return parameters
 
 
-def get_single_window_features(filtered_window):
-    features_function = [get_ZC, get_RMS, get_MAV]
+def get_single_window_features(filtered_window, ar_order):
+    features_function = [wave_length, get_ZC, get_RMS, get_MAV]
     features = np.vstack([foo(filtered_window)
                          for foo in features_function]).transpose()
-    return np.hstack((features, get_AR_coeffs(filtered_window))).flatten()
+    return np.hstack((features, get_AR_coeffs(filtered_window, ar_order))).flatten()
 
 
 def process_emg(emg):
     """
     EMG has zero mean and no artifacts. This function will segmant the data, filter it and apply features extraction methods to return the dataset.
     """
-    features_names = ["ZC", "RMS", "MAV"]
-    features_names.extend([f"AR{i}" for i in range(1, 7)])
+    features_names = ["WL", "ZC", "RMS", "MAV"]
+    ar_order = 4
+    
+    features_names.extend([f"AR{i}" for i in range(1, ar_order+1)])
     df_col = []
     for emg_num in range(1, emg.shape[1]+1):
         df_col.extend([f"sensor {emg_num} {f}" for f in features_names])
@@ -161,9 +163,9 @@ def process_emg(emg):
         # Segmant the data
         window = segmant(emg, start, end)
         # Filter segmanted data
-        filtered_window = emg_filter(window)
+        window = emg_filter(window)
         # Get features
-        features = get_single_window_features(filtered_window)
+        features = get_single_window_features(window, ar_order)
         # Update data frame
         dataset.loc[len(dataset)] = features
         start += SLIDING_WINDOW_STRIDE
@@ -247,13 +249,14 @@ if __name__ == "__main__":
     plt.rcParams["figure.figsize"] = [14, 10]
 
     # for s in ["01","02", "04"]:
-    emg_to_features()
-    # try:
-    #     # If all subject data files exisit, the dataset will be automatically generated/updated
-    #     from Dataset_generator import *
-    #     get_dataset(s)
-    #     print("Dataset file been updated successfully.")
-    # except:
-    #     pass
+    subject = input("Please input subject number in XX format: ")
+    emg_to_features(subject)
+    try:
+        # If all subject data files exisit, the dataset will be automatically generated/updated
+        from Dataset_generator import *
+        get_dataset(subject)
+        print("Dataset file been updated successfully.")
+    except:
+        pass
 
     # plt.show()
