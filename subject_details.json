@@ -154,11 +154,35 @@
     "emg_sync": {"train_01":{"start":13.71, "length":194},
                 "train_02":{"start":14.85, "length":194},
                 "val":{"start":18.11, "length":62},
-                "test":{"start":5.93, "length":84}},
+                "test":{"start":6.98, "length":84}},
 
     "motive_sync": {"train_01":{"start":10, "end":204},
                 "train_02":{"start":10, "end":204},
                 "val":{"start":14, "end":76},
                 "test":{"start":4, "end":88}}
+},
+
+"S09": {
+    "date": 20220501,
+    "name": "Wei",
+    "weight": 65,
+    "age":27,
+    "height":177,
+    "sides": ["L"],
+    "FP_sampling_rate":1000,
+    "delay": {"train_01":[0],
+              "train_02":[0],
+              "val":[0], 
+              "test":[0]},
+
+    "emg_sync": {"train_01":{"start":9.65, "length":193},
+                "train_02":{"start":5.80, "length":197},
+                "val":{"start":4.96, "length":77},
+                "test":{"start":7.36, "length":92}},
+
+    "motive_sync": {"train_01":{"start":7, "end":200},
+                "train_02":{"start":3, "end":200},
+                "val":{"start":2, "end":79},
+                "test":{"start":4, "end":96}}
 }
 }

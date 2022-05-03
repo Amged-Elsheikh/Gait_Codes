@@ -30,7 +30,7 @@ def nan_rmse(y_true, y_pred):
         y_true_col = y_true_col[logic]
         y_pred_col = y_pred_col[logic]
         error.append(rmse(y_true_col, y_pred_col))
-        max_error.append(metrics.max_error(y_true_col, y_pred_col))
+        max_error.append(np.max(np.abs(y_true_col - y_pred_col)))
     return np.around(error, 3), np.around(max_error, 3)
 
 
@@ -59,6 +59,8 @@ class SPLoss(losses.Loss):  # Slip Prevention Loss
     def __init__(self, threshold=3.0, **kwargs):
         self.threshold = threshold
         super().__init__(**kwargs)
+        if self.threshold == 0:
+            self.threshold=1
 
     def call(self, y_true, y_pred):
         error = y_true - y_pred

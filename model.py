@@ -131,19 +131,19 @@ if __name__ == "__main__":
 
     # Choose features and labels
     # Used EMG features
-    features = ["RMS", "AR"]
+    features = ["RMS", "AR", "WL", "ZC"]
 
     # Used sensors
-    sensors = [6, 7]
+    sensors = [1, 2, 3, 4, 5]
     sensors = [f'sensor {x}' for x in sensors]
     # True if you want to use knee angle as an extra input
     add_knee = False
     # Labels to be predicted
-    out_labels = ["ankle moment"]
+    out_labels = ["knee moment"]
     # Loss factor to prevent ankle slip
-    loss_factor = 0.0
+    loss_factor = 1
     # Window object parameters
-    input_width = 15
+    input_width = 20
     shift = 1
     label_width = 1
     batch_size = 128
@@ -155,8 +155,8 @@ if __name__ == "__main__":
                                sensors = sensors, add_knee=add_knee,
                                out_labels=out_labels)
     model_dic = {}
-    # model_dic["FF model"] = create_ff_model
-    # model_dic["CNN model"] = create_conv_model
+    model_dic["FF model"] = create_ff_model
+    model_dic["CNN model"] = create_conv_model
     model_dic["LSTM model"] = create_lstm_model
 
     r2_results = pd.DataFrame(columns=model_dic.keys())
@@ -164,14 +164,14 @@ if __name__ == "__main__":
     nrmse_results = pd.DataFrame(columns=model_dic.keys())
     predictions = {}
 
-    test_subject = "06"
+    test_subject = "09"
     
     for model_name in model_dic:
         history, y_true, y_pred, r2, rmse = train_fit(
             subject=test_subject,
             tested_on=None,
             model_name=model_name,
-            epochs=1000,
+            epochs=200,
             eval_only=False,
             load_best=False,)
 
@@ -183,9 +183,9 @@ if __name__ == "__main__":
         rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
         nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
         # print(model_name)
-    plt.show()
-    # plot_models(predictions, y_true,
-    #             path=f"../Results/indiviuals/", subject=test_subject)
+        plt.close()
+    plot_models(predictions, y_true,
+                path=f"../Results/indiviuals/", subject=test_subject)
     plt.close()
     r2_results.to_csv("../Results/indiviuals/R2_results.csv")
     rmse_results.to_csv("../Results/indiviuals/RMSE_results.csv")
