@@ -2,6 +2,7 @@
 """
 import pandas as pd
 import numpy as np
+from scipy.signal import butter, filtfilt
 import json
 
 
@@ -33,6 +34,13 @@ def get_directories(subject, trials):
     return IK_files, ID_files, periods_files, Features_files, output_files
 
 
+def lowpass_filter(data, freq=5, fs=100):
+    low_pass = freq/(fs/2)
+    b2, a2 = butter(N=6, Wn=low_pass, btype='lowpass')
+    data.iloc[:, 1:] = filtfilt(b2, a2, data.iloc[:, 1:], axis=0)
+    return data
+
+
 def load_data(ik_file, id_file, periods_file, features_file):
     # Load IK data
     IK = pd.read_csv(ik_file, header=8, sep='\t', usecols=[0, 17, 18])
@@ -40,31 +48,34 @@ def load_data(ik_file, id_file, periods_file, features_file):
     ID = pd.read_csv(id_file, header=6, sep='\t', usecols=[0, 17, 19])
     # Load record interval data
     periods = pd.read_csv(periods_file, index_col=0)
-    
+
     # Load EMG features
     features = pd.read_csv(features_file, index_col='time')
     return IK, ID, periods, features
 
 
 def merge_joints(IK: pd.DataFrame, ID: pd.DataFrame, periods: pd.DataFrame) -> pd.DataFrame:
-    """Join kinematics and kinetics data into a single pandas dataframe along with record periods dataframe which used to filter the dataset by removing all periods where ID solution was not available (no GRF data)
+    """Join kinematics and kinetics data into a single pandas dataframe along with record periods dataframe which used to downsample the dataset by removing all periods where ID solution was not available (no GRF data)
     """
+    ID.iloc[:, :] = lowpass_filter(ID)
     # Merge kinematics and kinetics data
     joints_data = pd.merge(IK, ID, on='time', how='inner')
 
     left = periods[['left_start', 'left_end']].dropna()
     # work on left side
-    left_joints = ['knee_angle_l_moment', 'ankle_angle_l_moment']
-    condition = joints_data['time']<=left.iloc[0, 0]/100
-    joints_data.loc[condition, left_joints] = np.nan
+    moments_columns = ID.columns[1:]
+
+    condition = joints_data['time'] <= left.iloc[0, 0]/100
+    joints_data.loc[condition, moments_columns] = np.nan
     for i in range(1, len(left)):
         # divide by 100 to get the time
         previous_end = left.loc[i-1, 'left_end']/100
         current_start = left.loc[i, 'left_start']/100
-        condition = (previous_end<=joints_data['time']) & (joints_data['time']<=current_start)
-        joints_data.loc[condition, left_joints] = np.nan
+        condition = (previous_end <= joints_data['time']) & (
+            joints_data['time'] <= current_start)
+        joints_data.loc[condition, moments_columns] = np.nan
     condition = joints_data['time'] > left.loc[i, 'left_end']/100
-    joints_data.loc[condition, left_joints] = np.nan
+    joints_data.loc[condition, moments_columns] = np.nan
     # Reset time to zero to match EMG
     joints_data = reset_time(joints_data)
     return joints_data
