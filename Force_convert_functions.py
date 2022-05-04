@@ -8,6 +8,9 @@ pd.set_option('mode.chained_assignment', None)
 
 
 def get_IO_dir(subject, trials):
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
+        
     date = subject_details[f"S{subject}"]["date"]
     input_path = f"../Data/S{subject}/{date}/Dynamics/Force_Data/"
     output_path = f"../OpenSim/S{subject}/{date}/Dynamics/Force_Data/"
@@ -68,9 +71,12 @@ def grf_periods(data, trigger=5):
 
 
 def apply_filter(data, trigger=5):
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
+    
     stance_periods = grf_periods(data, trigger)
     f = 5  # Filter frequency
-    fs = 100  # Hz
+    fs = subject_details[f"S{subject}"]["FP_sampling_rate"]  # Hz
     low_pass = f/(fs/2)
     b2, a2 = butter(N=6, Wn=low_pass, btype='lowpass')
     columns = [" Fx", " Fy", " Fz",
@@ -80,8 +86,8 @@ def apply_filter(data, trigger=5):
     data[' Cy'] = 0
     # apply filter
     for stance in stance_periods:
-        condition = (data["MocapFrame"] >= stance.start) & (
-            data["MocapFrame"] <= stance.stop)
+        condition = (data["MocapFrame"] >= stance.start-10) & (
+            data["MocapFrame"] <= stance.stop+10)
         data.loc[condition, columns] = filtfilt(
             b2, a2, data.loc[condition, columns], axis=0)
         # CoP are calculated from the Force and Moment. Filter CoP by recalculate it from the filtered data. Note that the CoP will grow when foot outside force plate.
@@ -113,6 +119,9 @@ def system_match(data):
 
 # There is a delay in system (various delay may change )
 def shift_data(data, shift_key):
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
+        
     shift_value = subject_details[f"S{subject}"]["delay"][shift_key][0]
     if shift_value != 0:
         shift_columns = [' Fx', ' Fz', ' Fy',
@@ -159,17 +168,12 @@ def save_force_data(force_data, output_path, output_name):
 
 
 if __name__ == '__main__':
-
-    with open("subject_details.json", "r") as f:
-        subject_details = json.load(f)
-
     # Get files names
     trials = ["train_01", "train_02", "val", "test"]
     subject = input(f"insert subject number in XX format: ")
 
     input_path, output_path, files = get_IO_dir(subject, trials)
     # Process each trial
-    w = subject_details[f"S{subject}"]["weight"]
     for i, file in enumerate(files):
         # Load Left force plates data
         data = pd.read_csv(input_path+file, header=31, low_memory=False)
