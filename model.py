@@ -1,3 +1,4 @@
+from gc import callbacks
 import json
 import os
 
@@ -16,6 +17,12 @@ from Custom.OneSideWindowGenerator import *
 
 rcParams['pdf.fonttype'] = 42
 rcParams['ps.fonttype'] = 42
+
+def add_mean_std(df):
+    mean = df.mean()
+    std = df.std()
+    df.loc['mean',:] = mean
+    df.loc['std',:] = std
 
 
 # # Window generator creation function
@@ -53,15 +60,21 @@ def train_fit(
     # Load and compile new model
     K.clear_session()
     model = model_dic[model_name](window_object)
-    model.compile(
-        optimizer=keras.optimizers.Nadam(learning_rate=lr), loss=SPLoss(loss_factor)
-    )
-    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=model_file,
-        save_weights_only=True,
-        monitor="val_loss",
-        save_best_only=True,
-    )
+    model.compile(optimizer=keras.optimizers.Nadam(learning_rate=lr),
+                  loss=SPLoss(loss_factor))
+
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=model_file, save_weights_only=True,
+        monitor="val_loss", save_best_only=True,)
+
+    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss",
+                                                     min_delta=1e-3,
+                                                     
+                                                     factor=0.9,  patience=20)
+
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", 
+                                                  patience=50, restore_best_weights=True,)
+    callbacks = [checkpoint_callback, reduce_lr, early_stop]
 
     if load_best:
         try:
@@ -73,12 +86,9 @@ def train_fit(
     # Train or load the best model the model
     try:
         if not eval_only:
-            history = model.fit(
-                x=train_set,
-                validation_data=val_set,
-                epochs=epochs,
-                callbacks=[model_checkpoint_callback],
-            )
+            history = model.fit(x=train_set, validation_data=val_set,
+                                epochs=epochs, callbacks=callbacks)
+
             plot_learning_curve(history, folder)
             plt.close()
             # Load the best model
@@ -105,13 +115,16 @@ def train_fit(
     y_true = y_true[:, -1, :]
 
     ################ Evaluation and plot ################
+    weight = subject_details[f"S{test_subject}"]["weight"]
     r2_score = nan_R2(y_true, y_pred)
     rmse_result, max_error = nan_rmse(y_true, y_pred)
+    nrmse = normalized_rmse(y_true*weight, y_pred*weight)
     # Change the folder to the test subject folder after loading the model
     folder = f"../Results/indiviuals/{model_name}/S{tested_on}/"
-    plot_results(y_true, y_pred, out_labels, r2_score,
-                 rmse_result, max_error, folder)
-    return history, y_true, y_pred, r2_score, rmse_result
+    plot_results(y_true, y_pred, out_labels,
+                 r2_score, rmse_result, max_error,
+                 nrmse, folder)
+    return history, y_true, y_pred, r2_score, rmse_result, nrmse
 
 
 if __name__ == "__main__":
@@ -131,17 +144,17 @@ if __name__ == "__main__":
 
     # Choose features and labels
     # Used EMG features
-    features = ["RMS", "AR", "WL", "ZC"]
+    features = ["RMS", "ZC", "WL"]
 
     # Used sensors
-    sensors = [1, 2, 3, 4, 5]
+    sensors = [6, 8]
     sensors = [f'sensor {x}' for x in sensors]
     # True if you want to use knee angle as an extra input
     add_knee = False
     # Labels to be predicted
-    out_labels = ["knee moment"]
+    out_labels = ["ankle moment"]
     # Loss factor to prevent ankle slip
-    loss_factor = 1
+    loss_factor = 2
     # Window object parameters
     input_width = 20
     shift = 1
@@ -151,8 +164,8 @@ if __name__ == "__main__":
     window_generator = partial(create_window_generator,
                                input_width=input_width, shift=shift,
                                label_width=label_width,
-                               batch_size=batch_size, features=features, 
-                               sensors = sensors, add_knee=add_knee,
+                               batch_size=batch_size, features=features,
+                               sensors=sensors, add_knee=add_knee,
                                out_labels=out_labels)
     model_dic = {}
     model_dic["FF model"] = create_ff_model
@@ -164,29 +177,31 @@ if __name__ == "__main__":
     nrmse_results = pd.DataFrame(columns=model_dic.keys())
     predictions = {}
 
-    test_subject = "09"
-    
-    for model_name in model_dic:
-        history, y_true, y_pred, r2, rmse = train_fit(
-            subject=test_subject,
-            tested_on=None,
-            model_name=model_name,
-            epochs=200,
-            eval_only=False,
-            load_best=False,)
+    subjects = ["06", "08", "09"]
+    for test_subject in subjects:
+        for model_name in model_dic:
+            history, y_true, y_pred, r2, rmse, nrmse = train_fit(
+                subject=test_subject,
+                tested_on=None,
+                model_name=model_name,
+                epochs=1000, lr=0.001,
+                eval_only=False,
+                load_best=False,)
 
-        predictions[model_name] = y_pred
-        nrmse = normalized_rmse(
-            y_true*subject_details[f"S{test_subject}"]["weight"], y_pred*subject_details[f"S{test_subject}"]["weight"])
-        print(f"NRMSE: {nrmse[0]}")
-        r2_results.loc[f"S{test_subject}", model_name] = r2[0]
-        rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
-        nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
-        # print(model_name)
+            predictions[model_name] = y_pred
+
+            r2_results.loc[f"S{test_subject}", model_name] = r2[0]
+            rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
+            nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
+            # print(model_name)
+            plt.close()
+        plot_models(predictions, y_true, out_labels, test_subject,
+                    path="../Results/indiviuals/",)
         plt.close()
-    plot_models(predictions, y_true,
-                path=f"../Results/indiviuals/", subject=test_subject)
-    plt.close()
+    add_mean_std(r2_results)
+    add_mean_std(rmse_results)
+    add_mean_std(nrmse_results)
+    
     r2_results.to_csv("../Results/indiviuals/R2_results.csv")
     rmse_results.to_csv("../Results/indiviuals/RMSE_results.csv")
     nrmse_results.to_csv("../Results/indiviuals/NRMSE_results.csv")
