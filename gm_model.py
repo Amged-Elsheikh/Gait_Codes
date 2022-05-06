@@ -1,25 +1,32 @@
 import json
 import os
-from functools import partial
-from matplotlib import rcParams
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import tensorflow as tf
+from matplotlib import rcParams
+from tensorflow import keras
 
+from model import create_window_generator, model_callbacks, add_mean_std
+from Custom.DataHandler import DataHandler
 from Custom.PlottingFunctions import *
+from Custom.TFModels import *
+from Custom.TFModelEvaluation import *
+from Custom.OneSideWindowGenerator import *
 
 rcParams['pdf.fonttype'] = 42
 rcParams['ps.fonttype'] = 42
 
-def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False,):
+def train_fit_gm(subject, tested_on, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False,):
     """
     subject: List the subjects used for training.
     tested on: subject number in XX string format.
     """
     # #Create Results and model folder
-    folder = f"../Results/GM/{model_name}/S{test_subject}/"
+    folder = f"../Results/GM/{model_name}/S{tested_on}/"
     if not os.path.exists(folder):
         os.makedirs(folder)
-    model_file = f"{folder}S{test_subject}_{model_name}.hdf5"
+    model_file = f"{folder}S{tested_on}_{model_name}.hdf5"
     # Make dataset
     # #FOR NOW I HAVE 2 SUBJECTS FOR TRAINING, I'LL GENERALIZE THE CODE TO ACCEPT MORE SUBJECTS LATER
     window_object_1 = window_generator(subject[0])
@@ -27,11 +34,15 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
     # Get all dataset
     train_set_1, val_set_1 = window_object_1.get_gm_train_val_dataset()
     train_set_2, val_set_2 = window_object_2.get_gm_train_val_dataset()
-    train_set = window_object_1.preprocessing(train_set_1.concatenate(train_set_2),
-                                              remove_nan=True, shuffle=True, batch_size=None, drop_reminder=True,)
-    val_set = window_object_1.preprocessing(val_set_1.concatenate(val_set_2),
-                                            remove_nan=True, shuffle=False, batch_size=None, drop_reminder=False,
-                                            )
+    train_set = window_object_1.preprocessing(
+        train_set_1.concatenate(train_set_2),
+        remove_nan=True, shuffle=True,
+        batch_size=None, drop_reminder=True,)
+    
+    val_set = window_object_1.preprocessing(
+        val_set_1.concatenate(val_set_2),
+        remove_nan=True, shuffle=False,
+        batch_size=None, drop_reminder=False,)
     
     # Load and compile new model
     tf.keras.backend.clear_session()
@@ -39,16 +50,10 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
     model.compile(
         optimizer=tf.keras.optimizers.Nadam(learning_rate=lr), loss=SPLoss(loss_factor)
     )
-    # model.summary()
-    # input("Click Enter to continue")
-    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=model_file,
-        save_weights_only=True,
-        monitor="val_loss",
-        save_best_only=True,
-    )
+    
+    callbacks = model_callbacks(model_file)
 
-    if load_best:
+    if load_best or eval_only:
         try:
             model.load_weights(model_file)
         except:
@@ -58,10 +63,8 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
     try:  # Train or load the best model the model
         if not eval_only:
             history = model.fit(
-                x=train_set,
-                validation_data=val_set,
-                epochs=epochs,
-                callbacks=[model_checkpoint_callback],
+                x=train_set, validation_data=val_set,
+                epochs=epochs, callbacks=callbacks,
             )
             plot_learning_curve(history, folder)
             plt.close()
@@ -72,13 +75,10 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
         print(history)
     except OSError:  # If no saved model to be evaluated exist
         print("No saved model existing. weights will be initialized")
-    ##############################################################################################################
-    # Load the best model. Evaluation will always be with best model
-    model.load_weights(model_file)
+    ############################################################################
     # Get predictions and real values
-    test_window = window_generator(test_subject)
-    # w = subject_details[f"S{test_subject}"]["weight"]
-    test_set = test_window.get_evaluation_set()
+    test_window = window_generator(tested_on)
+    test_set = test_window.evaluation_set
     y_pred = model.predict(test_set)
     if len(y_pred.shape) == 3:
         # Get the last time step and reduce output dimenions to two
@@ -89,12 +89,16 @@ def train_fit_gm(subject, test_subject, model_name, epochs=1, lr=0.001, eval_onl
     y_true = y_true[:, -1, :]
 
     ################ Evaluation and plot ################
+    weight = subject_details[f"S{tested_on}"]["weight"]
     r2_score = nan_R2(y_true, y_pred)
     rmse_result, max_error = nan_rmse(y_true, y_pred)
-    plot_results(y_true, y_pred, out_labels, r2_score,
-                 rmse_result, max_error, folder)
-    plt.draw()
-    return history, y_true, y_pred, r2_score, rmse_result
+    nrmse = normalized_rmse(y_true*weight, y_pred*weight)
+    # Change the folder to the test subject folder after loading the model
+    folder = f"../Results/indiviuals/{model_name}/S{tested_on}/"
+    plot_results(y_true, y_pred, out_labels,
+                 r2_score, rmse_result, max_error,
+                 nrmse, folder)
+    return history, y_true, y_pred, r2_score, rmse_result, nrmse
 
 
 if __name__ == "__main__":
@@ -110,22 +114,34 @@ if __name__ == "__main__":
     if not tf.test.is_built_with_cuda():
         raise print("No GPU found")
     # Get all subjects details
-    # with open("subject_details.json", "r") as f:
-    #     subject_details = json.load(f)
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
     # Choose features and labels
-    features = ["RMS", "ZC"]  # Used EMG features
-    add_knee = False  # True if you want to use knee angle as an extra input
-    out_labels = ["ankle moment"]  # Labels to be predicted
-    loss_factor = 3.0  # Loss factor to prevent ankle slip
-    # Window object parameters
-    input_width = 15
-    shift = 3
-    label_width = 1
-    batch_size = 64
+    # Used EMG features
+    features = ["RMS", "ZC", "WL", "AR"]
 
-    window_generator = partial(create_window_generator, input_width=input_width, shift=shift, label_width=label_width,
-                               batch_size=batch_size, features=features, add_knee=add_knee, out_labels=out_labels)
-    # model_name = "nn_model"
+    # Used sensors
+    sensors = [6, 7, 8, 9]
+    sensors = [f'sensor {x}' for x in sensors]
+    # True if you want to use knee angle as an extra input
+    add_knee = False
+    # Labels to be predicted
+    out_labels = ["ankle moment"]
+    # Loss factor to prevent ankle slip
+    loss_factor = 2
+    # Window object parameters
+
+    input_width = 20
+    shift = 1
+    label_width = 1
+    batch_size = 8
+
+    window_generator = partial(create_window_generator,
+                               input_width=input_width, shift=shift,
+                               label_width=label_width,
+                               batch_size=batch_size, features=features,
+                               sensors=sensors, add_knee=add_knee,
+                               out_labels=out_labels)
     model_dic = {}
 
     model_dic["FF model"] = create_ff_model
@@ -135,7 +151,8 @@ if __name__ == "__main__":
     # Create pandas dataframe that will have all the results
     r2_results = pd.DataFrame(columns=model_dic.keys())
     rmse_results = pd.DataFrame(columns=model_dic.keys())
-    subjects = ["01", "02", "04"]
+    nrmse_results = pd.DataFrame(columns=model_dic.keys())
+    subjects = ["06", "08", "09"]
 
     for test_subject in subjects:
         train_subjects = subjects.copy()
@@ -145,20 +162,27 @@ if __name__ == "__main__":
         for model_name in model_dic.keys():
             print(model_name)
 
-            history, y_true, y_pred, r2, rmse = train_fit_gm(
-                subject=train_subjects, test_subject=test_subject,
-                model_name=model_name, epochs=500,
-                eval_only=False, load_best=False)
+            history, y_true, y_pred, r2, rmse, nrmse = train_fit_gm(
+                subject=train_subjects,
+                tested_on=test_subject,
+                model_name=model_name,
+                epochs=500,
+                eval_only=True,
+                load_best=False)
+            
             predictions[model_name] = y_pred
-            nrmse = normalized_rmse(
-                y_true*subject_details[f"S{test_subject}"]["weight"], y_pred*subject_details[f"S{test_subject}"]["weight"])
-            print(f"NRMSE: {nrmse[0]}")
             r2_results.loc[f"S{test_subject}", model_name] = r2[0]
             rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
+            nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
+            
             plt.close()
 
         plot_models(predictions, y_true, path="../Results/GM/",
                     subject=test_subject)
         plt.close()
+    add_mean_std(r2_results)
+    add_mean_std(rmse_results)
+    add_mean_std(nrmse_results)
     r2_results.to_csv("../Results/GM/R2_results.csv")
     rmse_results.to_csv("../Results/GM/RMSE_results.csv")
+    nrmse_results.to_csv("../Results/GM/NRMSE_results.csv")
