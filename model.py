@@ -149,7 +149,7 @@ if __name__ == "__main__":
     features = ["RMS", "ZC", "WL", "AR"]
 
     # Used sensors
-    sensors = [6, 8, 9]
+    sensors = [6, 7, 8, 9]
     sensors = [f'sensor {x}' for x in sensors]
     # True if you want to use knee angle as an extra input
     add_knee = False
@@ -171,8 +171,8 @@ if __name__ == "__main__":
                                sensors=sensors, add_knee=add_knee,
                                out_labels=out_labels)
     model_dic = {}
-    # model_dic["FF model"] = create_ff_model
-    # model_dic["CNN model"] = create_conv_model
+    model_dic["FF model"] = create_ff_model
+    model_dic["CNN model"] = create_conv_model
     model_dic["LSTM model"] = create_lstm_model
 
     r2_results = pd.DataFrame(columns=model_dic.keys())
