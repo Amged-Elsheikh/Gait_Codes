@@ -69,8 +69,7 @@ def train_fit(
 
     reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss",
                                                      min_delta=1e-3,
-                                                     
-                                                     factor=0.9,  patience=20)
+                                                     factor=0.8,  patience=20)
 
     early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", 
                                                   patience=50, restore_best_weights=True,)
@@ -144,10 +143,10 @@ if __name__ == "__main__":
 
     # Choose features and labels
     # Used EMG features
-    features = ["RMS", "ZC", "WL"]
+    features = ["RMS", "ZC", "WL", "AR"]
 
     # Used sensors
-    sensors = [6, 8]
+    sensors = [6, 8, 9]
     sensors = [f'sensor {x}' for x in sensors]
     # True if you want to use knee angle as an extra input
     add_knee = False
@@ -156,10 +155,11 @@ if __name__ == "__main__":
     # Loss factor to prevent ankle slip
     loss_factor = 2
     # Window object parameters
+
     input_width = 20
     shift = 1
     label_width = 1
-    batch_size = 128
+    batch_size = 8
 
     window_generator = partial(create_window_generator,
                                input_width=input_width, shift=shift,
@@ -168,8 +168,8 @@ if __name__ == "__main__":
                                sensors=sensors, add_knee=add_knee,
                                out_labels=out_labels)
     model_dic = {}
-    model_dic["FF model"] = create_ff_model
-    model_dic["CNN model"] = create_conv_model
+    # model_dic["FF model"] = create_ff_model
+    # model_dic["CNN model"] = create_conv_model
     model_dic["LSTM model"] = create_lstm_model
 
     r2_results = pd.DataFrame(columns=model_dic.keys())

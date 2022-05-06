@@ -2,13 +2,30 @@ from functools import partial
 from tensorflow.keras import layers, models
 
 
-def create_lstm_model(window_object):
-    custom_LSTM = partial(layers.LSTM, units=4, dropout=0.3)
+def create_lstm_model(window_object, stacked=3):
+    custom_LSTM = partial(layers.LSTM, units=8, dropout=0.1)
+    
+    # x_input = layers.Input(shape=(window_object.input_width,
+    #                         window_object.features_num))
+    # for i in range(stacked-1):
+    #     if i == 0:
+    #         x = custom_LSTM(return_sequences=True)(x_input)
+    #     else:
+    #         x = custom_LSTM(return_sequences=True)(x)
+    # x = custom_LSTM(return_sequences=False)(x)
+        
+    # x = layers.Dense(window_object.out_nums * window_object.label_width)(x)
+    # x = layers.Reshape([window_object.label_width,
+    #                     window_object.out_nums])(x)
+    # lstm_model = models.Model(inputs=x_input, outputs=x, name="lstm_model")
+    # lstm_model.summary()
+    # return lstm_model
+
     lstm_model = models.Sequential(
         [
             layers.InputLayer((window_object.input_width,
                               window_object.features_num)),
-            # custom_LSTM(4, return_sequences=True),
+            # custom_LSTM(return_sequences=True),
             custom_LSTM(return_sequences=True),
             custom_LSTM(return_sequences=False),
             layers.Dense(window_object.out_nums * window_object.label_width),
@@ -16,6 +33,7 @@ def create_lstm_model(window_object):
                 [window_object.label_width, window_object.out_nums]),
         ]
     )
+    lstm_model.summary()
     return lstm_model
 
 
@@ -41,7 +59,7 @@ def create_conv_model(window_object):
 
 
 def create_ff_model(window_object):
-    custom_nn = partial(layers.Dense, units=4, activation='relu')
+    custom_nn = partial(layers.Dense, units=8, activation='selu')
     nn_model = models.Sequential(
         [
             layers.InputLayer((window_object.input_width,
