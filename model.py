@@ -1,4 +1,3 @@
-from gc import callbacks
 import json
 import os
 
@@ -40,6 +39,20 @@ def create_window_generator(
                                     label_width, shift, batch_size)
     return window_object
 
+def model_callbacks(model_file):
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=model_file, save_weights_only=True,
+        monitor="val_loss", save_best_only=True,)
+
+    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss",
+                                                     min_delta=1e-3,
+                                                     factor=0.8,  patience=20)
+
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", 
+                                                  patience=50, restore_best_weights=True,)
+    callbacks = [checkpoint_callback, reduce_lr, early_stop]
+    return callbacks
+
 
 def train_fit(
     subject, tested_on, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False
@@ -63,17 +76,7 @@ def train_fit(
     model.compile(optimizer=keras.optimizers.Nadam(learning_rate=lr),
                   loss=SPLoss(loss_factor))
 
-    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=model_file, save_weights_only=True,
-        monitor="val_loss", save_best_only=True,)
-
-    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss",
-                                                     min_delta=1e-3,
-                                                     factor=0.8,  patience=20)
-
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", 
-                                                  patience=50, restore_best_weights=True,)
-    callbacks = [checkpoint_callback, reduce_lr, early_stop]
+    callbacks = model_callbacks(model_file)
 
     if load_best:
         try:
