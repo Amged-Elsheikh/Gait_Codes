@@ -59,7 +59,7 @@ def create_conv_model(window_object):
 
 
 def create_ff_model(window_object):
-    custom_nn = partial(layers.Dense, units=8, activation='selu')
+    custom_nn = partial(layers.Dense, units=4, activation='selu')
     nn_model = models.Sequential(
         [
             layers.InputLayer((window_object.input_width,
@@ -73,4 +73,5 @@ def create_ff_model(window_object):
                 [window_object.label_width, window_object.out_nums]),
         ]
     )
+    nn_model.summary()
     return nn_model
