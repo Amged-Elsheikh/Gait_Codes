@@ -94,7 +94,7 @@ def train_fit_gm(subject, tested_on, model_name, epochs=1, lr=0.001, eval_only=F
     rmse_result, max_error = nan_rmse(y_true, y_pred)
     nrmse = normalized_rmse(y_true*weight, y_pred*weight)
     # Change the folder to the test subject folder after loading the model
-    folder = f"../Results/indiviuals/{model_name}/S{tested_on}/"
+    folder = f"../Results/GM/{model_name}/S{tested_on}/"
     plot_results(y_true, y_pred, out_labels,
                  r2_score, rmse_result, max_error,
                  nrmse, folder)
@@ -166,8 +166,8 @@ if __name__ == "__main__":
                 subject=train_subjects,
                 tested_on=test_subject,
                 model_name=model_name,
-                epochs=500,
-                eval_only=True,
+                epochs=1000,
+                eval_only=False,
                 load_best=False)
             
             predictions[model_name] = y_pred
@@ -177,8 +177,7 @@ if __name__ == "__main__":
             
             plt.close()
 
-        plot_models(predictions, y_true, path="../Results/GM/",
-                    subject=test_subject)
+        plot_models(predictions, y_true, out_labels, test_subject, "../Results/GM/")
         plt.close()
     add_mean_std(r2_results)
     add_mean_std(rmse_results)
