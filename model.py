@@ -16,6 +16,7 @@ from Custom.OneSideWindowGenerator import *
 
 rcParams['pdf.fonttype'] = 42
 rcParams['ps.fonttype'] = 42
+plt.style.use("ggplot")
 
 def add_mean_std(df):
     mean = df.mean()
@@ -46,7 +47,7 @@ def model_callbacks(model_file):
 
     reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss",
                                                      min_delta=1e-3,
-                                                     factor=0.8,  patience=20)
+                                                     factor=0.7,  patience=20)
 
     early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", 
                                                   patience=50, restore_best_weights=True,)
@@ -119,8 +120,7 @@ def train_fit(
     ################ Evaluation and plot ################
     weight = subject_details[f"S{test_subject}"]["weight"]
     r2_score = nan_R2(y_true, y_pred)
-    rmse_result, max_error = nan_rmse(y_true, y_pred)
-    nrmse = normalized_rmse(y_true*weight, y_pred*weight)
+    rmse_result, nrmse, max_error = nan_rmse(y_true, y_pred)
     # Change the folder to the test subject folder after loading the model
     folder = f"../Results/indiviuals/{model_name}/S{tested_on}/"
     plot_results(y_true, y_pred, out_labels,

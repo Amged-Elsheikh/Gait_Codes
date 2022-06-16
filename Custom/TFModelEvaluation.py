@@ -21,6 +21,7 @@ def nan_R2(y_true, y_pred):
 def nan_rmse(y_true, y_pred):
     rmse = partial(metrics.mean_squared_error, squared=False)
     error = []
+    nrmse = []
     max_error = []
     _, l = np.shape(y_true)
     for i in range(l):
@@ -31,7 +32,9 @@ def nan_rmse(y_true, y_pred):
         y_pred_col = y_pred_col[logic]
         error.append(rmse(y_true_col, y_pred_col))
         max_error.append(np.max(np.abs(y_true_col - y_pred_col)))
-    return np.around(error, 3), np.around(max_error, 3)
+        delta = max(y_true_col) - min(y_true_col)
+        nrmse.append(error[i]/delta)
+    return np.around(error, 3), np.around(nrmse,3), np.around(max_error, 3)
 
 
 def normalized_rmse(y_true, y_pred):
@@ -43,8 +46,7 @@ def normalized_rmse(y_true, y_pred):
         logic = np.isfinite(y_true_col)
         y_true_col = y_true_col[logic]
         y_pred_col = y_pred_col[logic]
-        nmse = np.sum(np.square(y_true_col-y_pred_col)) / \
-            np.sum(np.square(y_true_col))
+        nmse = np.sum(np.square(y_true_col-y_pred_col)) / (np.max(y_true_col)-np.min(y_true_col))
         error.append(np.sqrt(nmse))
     return np.around(error, 3)
 
