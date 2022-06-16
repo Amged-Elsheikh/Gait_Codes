@@ -76,6 +76,7 @@ def plot_models(predictions: dict, y_true, labels, subject, path: str):
             plt.ylim([-1.6, 0.25])
             if 'knee' in label.lower():
                 plt.ylim([-0.4, 0.75])
+
             plt.grid(True)
         plt.xticks(fontsize=tick_size)
         plt.xlabel("Time [s]", fontsize=label_size)

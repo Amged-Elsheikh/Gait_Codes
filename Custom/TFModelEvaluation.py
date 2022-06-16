@@ -37,6 +37,7 @@ def nan_rmse(y_true, y_pred):
     return np.around(error, 3), np.around(nrmse,3), np.around(max_error, 3)
 
 
+
 def normalized_rmse(y_true, y_pred):
     error = []
     _, l = np.shape(y_true)

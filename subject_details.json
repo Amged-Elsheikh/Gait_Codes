@@ -98,15 +98,15 @@
     "height":180,
     "sides": ["L"],
     "FP_sampling_rate":100,
-    "delay": {"train_01":[-4],
+    "delay": {"train_01":[-5],
               "train_02":[-8],
-              "val":[-8], 
-              "test":[-11]},
+              "val":[-7], 
+              "test":[-9]},
 
-    "emg_sync": {"train_01":{"start":7.27, "length":187},
-                 "train_02":{"start":7.37, "length":173},
-                 "val":{"start":5.48, "length":79},
-                 "test":{"start":6.30, "length":67}},
+    "emg_sync": {"train_01":{"start":7.19, "length":187},
+                 "train_02":{"start":7.31, "length":173},
+                 "val":{"start":5.38, "length":79},
+                 "test":{"start":6.20, "length":67}},
 
     "motive_sync": {"train_01":{"start":5, "end":192},
                     "train_02":{"start":4, "end":177},
@@ -184,5 +184,102 @@
                 "train_02":{"start":3, "end":200},
                 "val":{"start":2, "end":79},
                 "test":{"start":4, "end":96}}
+},
+
+"S10": {
+    "date": 20220511,
+    "name": "Takashi",
+    "weight": 72.5,
+    "age":24,
+    "height":173,
+    "sides": ["L"],
+    "FP_sampling_rate":1000,
+    "delay": {"train_01":[0],
+              "train_02":[0],
+              "val":[0], 
+              "test":[0]},
+
+    "emg_sync": {"train_01":{"start":12.66, "length":202},
+                "train_02":{"start":7.09, "length":204},
+                "val":{"start":7.55, "length":64},
+                "test":{"start":6.27, "length":69}},
+
+    "motive_sync": {"train_01":{"start":10, "end":212},
+                "train_02":{"start":5, "end":209},
+                "val":{"start":4, "end":68},
+                "test":{"start":4, "end":73}}
+},
+
+"S11": {
+    "date": 20220512,
+    "name": "Taku",
+    "weight": 56,
+    "age":23,
+    "height":163,
+    "sides": ["L"],
+    "FP_sampling_rate":1000,
+    "delay": {"train_01":[0],
+              "train_02":[0],
+              "val":[0], 
+              "test":[0]},
+
+    "emg_sync": {"train_01":{"start":4.94, "length":193.2},
+                "train_02":{"start":5.40, "length":165},
+                "val":{"start":5.30, "length":68.8},
+                "test":{"start":5.36, "length":72.8}},
+
+    "motive_sync": {"train_01":{"start":3, "end":197.2},
+                "train_02":{"start":3, "end":168},
+                "val":{"start":3, "end":72.8},
+                "test":{"start":3, "end":75.8}}
+}, 
+
+"S12": {
+    "date": 20220513,
+    "name": "Takumi",
+    "weight": 62,
+    "age":22,
+    "height":175,
+    "sides": ["L"],
+    "FP_sampling_rate":1000,
+    "delay": {"train_01":[0],
+              "train_02":[0],
+              "val":[0], 
+              "test":[0]},
+
+    "emg_sync": {"train_01":{"start":8.37, "length":202},
+                "train_02":{"start":7.56, "length":199},
+                "val":{"start":4.95, "length":79},
+                "test":{"start":5.33, "length":74}},
+
+    "motive_sync": {"train_01":{"start":5, "end":207},
+                "train_02":{"start":5, "end":204},
+                "val":{"start":3, "end":82},
+                "test":{"start":3, "end":77}}
+},
+
+"S13": {
+    "date": 20220606,
+    "name": "Yan",
+    "weight": 69.6,
+    "age":24,
+    "height":183,
+    "sides": ["L"],
+    "FP_sampling_rate":1000,
+    "delay": {"train_01":[0],
+              "train_02":[0],
+              "val":[0], 
+              "test":[0]},
+
+    "emg_sync": {"train_01":{"start":5.25, "length":196},
+                "train_02":{"start":5.80, "length":203},
+                "val":{"start":5.41, "length":90},
+                "test":{"start":5.16, "length":79.85}},
+
+    "motive_sync": {"train_01":{"start":3, "end":199},
+                "train_02":{"start":3, "end":205},
+                "val":{"start":3, "end":93},
+                "test":{"start":3, "end":82.85}}
 }
+
 }

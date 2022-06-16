@@ -164,6 +164,8 @@ def process_emg(emg):
         window = segmant(emg, start, end)
         # Filter segmanted data
         window = emg_filter(window)
+        #
+        # window = np.diff(window, axis=0)/0.0009
         # Get features
         features = get_single_window_features(window, ar_order)
         # Update data frame
@@ -240,7 +242,7 @@ def emg_to_features(subject=None):
         # save dataset
         dataset.to_csv(output_file)
         # Plot data
-        plot_feature(dataset, "RMS", trial)
+        # plot_feature(dataset, "RMS", trial)
 
 
 # %%
@@ -248,7 +250,7 @@ if __name__ == "__main__":
     pd.set_option('display.max_columns', None)
     plt.rcParams["figure.figsize"] = [14, 10]
 
-    # for s in ["01","02", "04"]:
+    # for subject in ["06","08", "09",'10']:
     subject = input("Please input subject number in XX format: ")
     emg_to_features(subject)
     try:
