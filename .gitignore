@@ -8,3 +8,4 @@ live_plot.py
 *.ipynb
 emg-vs-moments-plot.py
 S07_Dataset_generator.py
+*.svg
