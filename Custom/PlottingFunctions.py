@@ -32,7 +32,7 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, n
         print(f"{col} max error is {max_error[i]}Nm/Kg")
         print(f"{col} nRMSE is {nrmse[i]}Nm/Kg")
         
-        plt.plot(time, y_true[:, i], linewidth=2.5)
+        plt.plot(time, y_true[:, i], "b-", linewidth=2.5)
         plt.plot(time, y_pred[:, i], "r--", linewidth=2,)
         plt.title(col, fontsize=title_size)
         if i == 0:
@@ -49,6 +49,7 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, n
         plt.axhline(y=0, color='black', linestyle='-')
     plt.tight_layout()
     plt.savefig(f"{folder}Predictions.pdf")
+    plt.savefig(f"{folder}Predictions.svg")
     plt.draw()
 
 
@@ -66,16 +67,16 @@ def plot_models(predictions: dict, y_true, labels, subject, path: str):
         for i, model_name in enumerate(predictions.keys()):
             # Create subplots
             plt.subplot(len(predictions.keys()), 1, i+1)
-            plt.plot(time, y_true[:, j], linewidth=2.5, label="measured moment")
-            plt.plot(time, predictions[model_name][:, j],
-                    "r--", linewidth=2, label="prediction")
+            plt.plot(time, y_true[:, j], "b", linewidth=2.5, label="measured moment")
+            plt.plot(time, predictions[model_name][:, j], "r--", linewidth=2, label="prediction")
             plt.title(model_name, fontsize=title_size)
             plt.xlim((0, 9))
             plt.ylabel("Moment [Nm/kg]", fontsize=label_size)
             # plt.yticks([0, 0.5, 1, 1.5], fontsize=tick_size)
-            # plt.ylim([-0.25, 1.52])
+            plt.ylim([-1.6, 0.25])
+            if 'knee' in label.lower():
+                plt.ylim([-0.4, 0.75])
             plt.grid(True)
-            plt.axvspan(3, 5.55, alpha=0.3, color='blue')
         plt.xticks(fontsize=tick_size)
         plt.xlabel("Time [s]", fontsize=label_size)
         plt.legend(bbox_to_anchor=(1, -0.5), loc="lower right",
@@ -83,3 +84,4 @@ def plot_models(predictions: dict, y_true, labels, subject, path: str):
         plt.tight_layout()
         plt.draw()
         plt.savefig(f"{path}S{subject} {label} estimations.pdf")
+        plt.savefig(f"{path}S{subject} {label} estimations.svg")
