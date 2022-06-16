@@ -39,8 +39,8 @@ def trial_period(data, subject, trial):
     record_period = subject_details[f"S{subject}"]["motive_sync"][trial]
     fps = subject_details[f"S{subject}"]['FP_sampling_rate']
     data['time'] = data[" DeviceFrame"]/fps
-    record_start = record_period['start']*fps
-    record_end = record_period['end']*fps
+    record_start = int(record_period['start']*fps)
+    record_end = int(record_period['end']*fps)
     data = data.iloc[record_start:record_end+1, :]
     data.reset_index(inplace=True, drop=True)
     return data
@@ -70,31 +70,31 @@ def grf_periods(data, trigger=5):
     return stance_periods
 
 
-def apply_filter(data, trigger=5):
+def apply_filter(data, subject, trigger=5):
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
     
     stance_periods = grf_periods(data, trigger)
-    f = 5  # Filter frequency
+    f = 10  # Filter frequency
     fs = subject_details[f"S{subject}"]["FP_sampling_rate"]  # Hz
     low_pass = f/(fs/2)
     b2, a2 = butter(N=6, Wn=low_pass, btype='lowpass')
     columns = [" Fx", " Fy", " Fz",
                " Mx", " My", " Mz", ]
 
-    data[' Cx'] = 0
-    data[' Cy'] = 0
+    data[' Cx'] = -data[' My']/data[' Fz']
+    data[' Cy'] = data[' Mx']/data[' Fz']
+    data[' Cx'].loc[abs(data[' Cx'])>0.25] = 0
+    data[' Cy'].loc[abs(data[' Cy'])>0.25] = 0
     # apply filter
     for stance in stance_periods:
-        condition = (data["MocapFrame"] >= stance.start-10) & (
-            data["MocapFrame"] <= stance.stop+10)
+        condition = (data["MocapFrame"] >= stance.start-5) & (
+            data["MocapFrame"] <= stance.stop+5)
         data.loc[condition, columns] = filtfilt(
             b2, a2, data.loc[condition, columns], axis=0)
-        # CoP are calculated from the Force and Moment. Filter CoP by recalculate it from the filtered data. Note that the CoP will grow when foot outside force plate.
-        data.loc[condition, " Cx"] = - \
-            data.loc[condition, " My"]/data.loc[condition, " Fz"]
-        data.loc[condition, " Cy"] = data.loc[condition,
-                                              " Mx"] / data.loc[condition, " Fz"]
+    ##     CoP are calculated from the Force and Moment. Filter CoP by recalculate it from the filtered data. Note that the CoP will grow when foot outside force plate.
+        data.loc[condition, " Cx"] = -data.loc[condition, " My"]/data.loc[condition, " Fz"]
+        data.loc[condition, " Cy"] = data.loc[condition," Mx"] / data.loc[condition, " Fz"]
     return data
 
 
@@ -171,8 +171,10 @@ if __name__ == '__main__':
     # Get files names
     trials = ["train_01", "train_02", "val", "test"]
     subject = input(f"insert subject number in XX format: ")
+    # for subject in ["10",'11']:
 
     input_path, output_path, files = get_IO_dir(subject, trials)
+
     # Process each trial
     for i, file in enumerate(files):
         # Load Left force plates data
@@ -188,10 +190,10 @@ if __name__ == '__main__':
         data = shift_data(data, shift_key=trials[i])
 
         # Remove the offset from the data
-        data = remove_offset(data)
+        # data = remove_offset(data)
 
         # Apply low pass filter
-        data = apply_filter(data)
+        # data = apply_filter(data, subject)
 
         # Match devices coordinate system
         data = system_match(data)
