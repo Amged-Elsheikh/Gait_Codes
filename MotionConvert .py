@@ -71,8 +71,8 @@ def load_trajectories(subject, Input):
             subject_details = json.load(f)
 
         record_period = subject_details[f"S{subject}"]["motive_sync"][trial]
-        record_start = record_period['start'] * 100
-        record_end = record_period['end'] * 100
+        record_start = int(record_period['start'] * 100)
+        record_end = int(record_period['end'] * 100)
         markers_trajectories = markers_trajectories.iloc[record_start:record_end + 1, :]
 
     return markers_trajectories
