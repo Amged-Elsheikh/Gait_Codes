@@ -73,9 +73,8 @@ def plot_models(predictions: dict, y_true, labels, subject, path: str):
             plt.xlim((0, 9))
             plt.ylabel("Moment [Nm/kg]", fontsize=label_size)
             # plt.yticks([0, 0.5, 1, 1.5], fontsize=tick_size)
-            # plt.ylim([-0.25, 1.52])
+            plt.ylim([-1.52, 0.25])
             plt.grid(True)
-            plt.axvspan(3, 5.55, alpha=0.3, color='blue')
         plt.xticks(fontsize=tick_size)
         plt.xlabel("Time [s]", fontsize=label_size)
         plt.legend(bbox_to_anchor=(1, -0.5), loc="lower right",
