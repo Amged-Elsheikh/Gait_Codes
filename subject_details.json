@@ -274,12 +274,36 @@
     "emg_sync": {"train_01":{"start":5.25, "length":196},
                 "train_02":{"start":5.80, "length":203},
                 "val":{"start":5.41, "length":90},
-                "test":{"start":5.16, "length":79.85}},
+                "test":{"start":5.18, "length":79.85}},
 
     "motive_sync": {"train_01":{"start":3, "end":199},
                 "train_02":{"start":3, "end":205},
                 "val":{"start":3, "end":93},
                 "test":{"start":3, "end":82.85}}
+},
+
+"S14": {
+    "date": 20220620,
+    "name": "Adam",
+    "weight": 69.5,
+    "age":23,
+    "height":172,
+    "sides": ["L"],
+    "FP_sampling_rate":1000,
+    "delay": {"train_01":[0],
+              "train_02":[0],
+              "val":[0], 
+              "test":[0]},
+
+    "emg_sync": {"train_01":{"start":5.73, "length":205},
+                "train_02":{"start":5.61, "length":198},
+                "val":{"start":5.57, "length":76},
+                "test":{"start":7.29, "length":72}},
+
+    "motive_sync": {"train_01":{"start":3, "end":208},
+                "train_02":{"start":3, "end":201},
+                "val":{"start":3, "end":79},
+                "test":{"start":3, "end":72}}
 }
 
 }
