@@ -304,6 +304,30 @@
                 "train_02":{"start":3, "end":201},
                 "val":{"start":3, "end":79},
                 "test":{"start":3, "end":72}}
+},
+
+"S15": {
+    "date": 20220623,
+    "name": "Chatrin",
+    "weight": 58.9,
+    "age":23,
+    "height":180,
+    "sides": ["L"],
+    "FP_sampling_rate":1000,
+    "delay": {"train_01":[0],
+              "train_02":[0],
+              "val":[0], 
+              "test":[0]},
+
+    "emg_sync": {"train_01":{"start":3.26, "length":210},
+                "train_02":{"start":3.30, "length":205},
+                "val":{"start":1.65, "length":83},
+                "test":{"start":3.25, "length":84}},
+
+    "motive_sync": {"train_01":{"start":1, "end":211},
+                "train_02":{"start":1, "end":206},
+                "val":{"start":1, "end":84},
+                "test":{"start":1, "end":85}}
 }
 
 }
