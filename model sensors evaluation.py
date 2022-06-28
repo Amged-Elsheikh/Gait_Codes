@@ -64,7 +64,7 @@ def train_fit(
     folder = f"../Results/indiviuals/{model_name}/S{subject}/"
     if not os.path.exists(folder):
         os.makedirs(folder)
-    model_file = f"{folder}S{subject}_{model_name}_{joint}.hdf5"
+    model_file = f"{folder}S{subject}_{model_name}_{joint}_muscles_3.hdf5"
 
     window_object = window_generator(subject)
     if tested_on == None:
@@ -136,7 +136,7 @@ if __name__ == "__main__":
         raise print("No GPU found")
     else:
         gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-        gpu_index = 0
+        gpu_index = 2
         tf.config.experimental.set_visible_devices(
             devices=gpus[gpu_index], device_type='GPU')
 
@@ -152,68 +152,75 @@ if __name__ == "__main__":
     # True if you want to use knee angle as an extra input
     add_knee = False
     # Labels to be predicted
-    joint = 'knee'
-    out_labels = [f"{joint} moment"]
     loss = {"ankle":2, "knee":1}
-    # Loss factor to prevent ankle slip
-    loss_factor = loss[joint]
-    # Window object parameters
-    eval_df = pd.read_csv(f'../Results/{joint}_results_init.csv',
-                            index_col=[0, 1], header=[0, 1])
-    input_width = 20
-    shift = 1
-    label_width = 1
-    batch_size = 8
+    for joint in ['knee']:
+        out_labels = [f"{joint} moment"]
+        # Loss factor to prevent ankle slip
+        loss_factor = loss[joint]
+        # Window object parameters
+        if joint=='knee':
+            csv_file = f"knee thigh.csv"
+        else:
+            csv_file = f"ankle muscles evaluation.csv"
 
-    for subject, sensors_id in eval_df.index:
-        # Used sensors
-        sensors = sensors_id.split("+")
+        eval_df = pd.read_csv(f'../Results/{csv_file}',
+                                index_col=[0, 1], header=[0, 1])
+        input_width = 20
+        shift = 1
+        label_width = 1
+        batch_size = 8
 
-        sensors = [f'sensor {x}' for x in sensors]
+        for subject, sensors_id in eval_df.index:
+            if subject != 14:
+                continue
+            # Used sensors
+            sensors = sensors_id.split("+")
 
-        window_generator = partial(create_window_generator,
-                                input_width=input_width, shift=shift,
-                                label_width=label_width,
-                                batch_size=batch_size, features=features,
-                                sensors=sensors, add_knee=add_knee,
-                                out_labels=out_labels)
-        model_dic = {}
-        model_dic["FF"] = create_ff_model
-        model_dic["CNN"] = create_conv_model
-        model_dic["LSTM"] = create_lstm_model
+            sensors = [f'sensor {x}' for x in sensors]
 
-        r2_results = pd.DataFrame(columns=model_dic.keys())
-        rmse_results = pd.DataFrame(columns=model_dic.keys())
-        nrmse_results = pd.DataFrame(columns=model_dic.keys())
-        predictions = {}
+            window_generator = partial(create_window_generator,
+                                    input_width=input_width, shift=shift,
+                                    label_width=label_width,
+                                    batch_size=batch_size, features=features,
+                                    sensors=sensors, add_knee=add_knee,
+                                    out_labels=out_labels)
+            model_dic = {}
+            model_dic["FF"] = create_ff_model
+            model_dic["CNN"] = create_conv_model
+            model_dic["LSTM"] = create_lstm_model
 
-        test_subject = f"{subject:02d}"
-        for model_name in model_dic:
-            history, y_true, y_pred, r2, rmse, nrmse = train_fit(
-                subject=test_subject,
-                tested_on=None,
-                model_name=model_name,
-                epochs=1000, lr=0.001,
-                eval_only=False,
-                load_best=False,)
+            r2_results = pd.DataFrame(columns=model_dic.keys())
+            rmse_results = pd.DataFrame(columns=model_dic.keys())
+            nrmse_results = pd.DataFrame(columns=model_dic.keys())
+            predictions = {}
 
-            predictions[model_name] = y_pred
+            test_subject = f"{subject:02d}"
+            for model_name in model_dic:
+                history, y_true, y_pred, r2, rmse, nrmse = train_fit(
+                    subject=test_subject,
+                    tested_on=None,
+                    model_name=model_name,
+                    epochs=1000, lr=0.001,
+                    eval_only=False,
+                    load_best=False,)
 
-            r2_results.loc[f"S{test_subject}", model_name] = r2[0]
-            rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
-            nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
-            
-            eval_df.loc[(int(test_subject), sensors_id), (model_name, "R2")] = r2[0]
-            eval_df.loc[(int(test_subject), sensors_id), (model_name, "RMSE")] = rmse[0]
-            eval_df.loc[(int(test_subject), sensors_id), (model_name, "NRMSE")] = nrmse[0]
-            eval_df.to_csv(f"../Results/{joint}_indiviual_results.csv")
+                predictions[model_name] = y_pred
 
-            # print(model_name)
+                r2_results.loc[f"S{test_subject}", model_name] = r2[0]
+                rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
+                nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
+                
+                eval_df.loc[(int(test_subject), sensors_id), (model_name, "R2")] = r2[0]
+                eval_df.loc[(int(test_subject), sensors_id), (model_name, "RMSE")] = rmse[0]
+                eval_df.loc[(int(test_subject), sensors_id), (model_name, "NRMSE")] = nrmse[0]
+                eval_df.to_csv(f"../Results/{csv_file}")
+
+                # print(model_name)
+                plt.close()
+            plot_models(predictions, y_true, out_labels, test_subject,
+                        path="../Results/indiviuals/",)
             plt.close()
-        plot_models(predictions, y_true, out_labels, test_subject,
-                    path="../Results/indiviuals/",)
-        plt.close()
-    
+        
 
 
     # add_mean_std(r2_results)

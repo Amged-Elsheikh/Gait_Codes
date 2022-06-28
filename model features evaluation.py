@@ -65,7 +65,7 @@ def train_fit(
     if not os.path.exists(folder):
         os.makedirs(folder)
     
-    model_file = f"3{folder}S{subject}_{model_name}_{joint}.hdf5"
+    model_file = f"{folder}S{subject}_{model_name}_{joint}0.hdf5"
 
     window_object = window_generator(subject)
     if tested_on == None:
@@ -141,10 +141,10 @@ if __name__ == "__main__":
         raise print("No GPU found")
     else:
         gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-        gpu_index = 3
+        gpu_index = 0
         tf.config.experimental.set_visible_devices(
             devices=gpus[gpu_index], device_type='GPU')
-
+    # sensor_checker = '1+5+6+8'
     tf.random.set_seed(42)
 
     with open("subject_details.json", "r") as f:
@@ -159,7 +159,9 @@ if __name__ == "__main__":
     # Loss factor to prevent ankle slip
     loss_factor = loss[joint]
     # Window object parameters
-    eval_df = pd.read_csv(f'../Results/{joint} features evaluation init.csv',
+    # csv_file = f"{joint} features evaluation.csv"
+    csv_file = "CNN model eval.csv"
+    eval_df = pd.read_csv(f'../Results/{csv_file}',
                           index_col=[0, 1], header=[0, 1])
     sensors_list = []
     for col in eval_df.droplevel(1, 1).columns:
@@ -171,46 +173,51 @@ if __name__ == "__main__":
     label_width = 1
     batch_size = 8
     model_dic = {}
-    model_name = "LSTM"
-    model_dic[model_name] = create_lstm_model
+    model_name = "CNN"
+    model_dic['MLP'] = create_ff_model
+    model_dic['CNN'] = create_conv_model
+    model_dic['LSTM'] = create_lstm_model
     for subject, features_string in eval_df.index:
+        # if subject != 14:
+        #     continue
         test_subject = f"{subject:02d}"
         predictions = {}
         features = features_string.split("+")
 
-        for sensors_id in sensors_list:   
-            if np.isnan(eval_df.loc[(subject, features_string),(sensors_id, "R2")].values[0]) and sensors_id=='6+8':
-                sensors_num = sensors_id.split("+")
-                sensors = [f'sensor {x}' for x in sensors_num]
+        for sensors_id in sensors_list:
+            # if sensors_id != sensor_checker:
+            #     continue
+            sensors_num = sensors_id.split("+")
+            sensors = [f'sensor {x}' for x in sensors_num]
 
-                window_generator = partial(create_window_generator,
-                                        input_width=input_width, shift=shift,
-                                        label_width=label_width,
-                                        batch_size=batch_size, features=features,
-                                        sensors=sensors, add_knee=add_knee,
-                                        out_labels=out_labels)
-                history, y_true, y_pred, r2, rmse, nrmse = train_fit(
-                    subject=test_subject,
-                    tested_on=None,
-                    model_name="LSTM",
-                    epochs=1000, lr=0.001,
-                    eval_only=False,
-                    load_best=False,)
+            window_generator = partial(create_window_generator,
+                                    input_width=input_width, shift=shift,
+                                    label_width=label_width,
+                                    batch_size=batch_size, features=features,
+                                    sensors=sensors, add_knee=add_knee,
+                                    out_labels=out_labels)
+            history, y_true, y_pred, r2, rmse, nrmse = train_fit(
+                subject=test_subject,
+                tested_on=None,
+                model_name=model_name,
+                epochs=1000, lr=0.001,
+                eval_only=False,
+                load_best=False,)
 
-                muscles_names = [muscles[i] for i in sensors_num]
-                muscles_names = "+".join(muscles_names)
-                predictions[muscles_names] = y_pred
+            muscles_names = [muscles[i] for i in sensors_num]
+            muscles_names = "+".join(muscles_names)
+            predictions[muscles_names] = y_pred
 
-                eval_df.loc[(int(test_subject), features_string),
-                            (sensors_id, "R2")] = r2[0]
-                eval_df.loc[(int(test_subject), features_string),
-                            (sensors_id, "RMSE")] = rmse[0]
-                eval_df.loc[(int(test_subject), features_string),
-                            (sensors_id, "NRMSE")] = nrmse[0]
-                eval_df.to_csv(f"../Results/{sensors_id}{joint} features evaluation.csv")
+            eval_df.loc[(int(test_subject), features_string),
+                        (sensors_id, "R2")] = r2[0]
+            eval_df.loc[(int(test_subject), features_string),
+                        (sensors_id, "RMSE")] = rmse[0]
+            eval_df.loc[(int(test_subject), features_string),
+                        (sensors_id, "NRMSE")] = nrmse[0]
+            eval_df.to_csv(f"../Results/{csv_file}")
 
-                # print(model_name)
-                plt.close()
+            # print(model_name)
+            plt.close()
         # plot_models(predictions, y_true, out_labels, test_subject,
         #             path="../Results/indiviuals/",)
         plt.close()
