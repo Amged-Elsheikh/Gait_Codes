@@ -103,10 +103,10 @@
               "val":[-7], 
               "test":[-9]},
 
-    "emg_sync": {"train_01":{"start":7.19, "length":187},
-                 "train_02":{"start":7.31, "length":173},
-                 "val":{"start":5.38, "length":79},
-                 "test":{"start":6.20, "length":67}},
+    "emg_sync": {"train_01":{"start":7.16, "length":187},
+                 "train_02":{"start":7.28, "length":173},
+                 "val":{"start":5.35, "length":79},
+                 "test":{"start":6.19, "length":67}},
 
     "motive_sync": {"train_01":{"start":5, "end":192},
                     "train_02":{"start":4, "end":177},
@@ -151,10 +151,10 @@
               "val":[0], 
               "test":[0]},
 
-    "emg_sync": {"train_01":{"start":13.71, "length":194},
-                "train_02":{"start":14.85, "length":194},
-                "val":{"start":18.11, "length":62},
-                "test":{"start":6.98, "length":84}},
+    "emg_sync": {"train_01":{"start":13.75, "length":194},
+                "train_02":{"start":14.90, "length":194},
+                "val":{"start":18.17, "length":62},
+                "test":{"start":7.05, "length":84}},
 
     "motive_sync": {"train_01":{"start":10, "end":204},
                 "train_02":{"start":10, "end":204},
@@ -175,10 +175,10 @@
               "val":[0], 
               "test":[0]},
 
-    "emg_sync": {"train_01":{"start":9.65, "length":193},
-                "train_02":{"start":5.80, "length":197},
-                "val":{"start":4.96, "length":77},
-                "test":{"start":7.36, "length":92}},
+    "emg_sync": {"train_01":{"start":9.75, "length":193},
+                "train_02":{"start":5.92, "length":197},
+                "val":{"start":5.04, "length":77},
+                "test":{"start":7.46, "length":92}},
 
     "motive_sync": {"train_01":{"start":7, "end":200},
                 "train_02":{"start":3, "end":200},
@@ -200,9 +200,9 @@
               "test":[0]},
 
     "emg_sync": {"train_01":{"start":12.66, "length":202},
-                "train_02":{"start":7.09, "length":204},
-                "val":{"start":7.55, "length":64},
-                "test":{"start":6.27, "length":69}},
+                "train_02":{"start":7.10, "length":204},
+                "val":{"start":7.57, "length":64},
+                "test":{"start":6.26, "length":69}},
 
     "motive_sync": {"train_01":{"start":10, "end":212},
                 "train_02":{"start":5, "end":209},
@@ -272,9 +272,9 @@
               "test":[0]},
 
     "emg_sync": {"train_01":{"start":5.25, "length":196},
-                "train_02":{"start":5.80, "length":203},
-                "val":{"start":5.41, "length":90},
-                "test":{"start":5.18, "length":79.85}},
+                "train_02":{"start":5.81, "length":203},
+                "val":{"start":5.42, "length":90},
+                "test":{"start":5.19, "length":79.85}},
 
     "motive_sync": {"train_01":{"start":3, "end":199},
                 "train_02":{"start":3, "end":205},
@@ -297,8 +297,8 @@
 
     "emg_sync": {"train_01":{"start":5.73, "length":205},
                 "train_02":{"start":5.61, "length":198},
-                "val":{"start":5.57, "length":76},
-                "test":{"start":7.29, "length":72}},
+                "val":{"start":5.55, "length":76},
+                "test":{"start":7.27, "length":72}},
 
     "motive_sync": {"train_01":{"start":3, "end":208},
                 "train_02":{"start":3, "end":201},
