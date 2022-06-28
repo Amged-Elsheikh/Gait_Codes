@@ -165,7 +165,7 @@ def process_emg(emg):
         # Filter segmanted data
         window = emg_filter(window)
         #
-        # window = np.diff(window, axis=0)/0.0009
+        window = np.diff(window, axis=0)/0.0009
         # Get features
         features = get_single_window_features(window, ar_order)
         # Update data frame
@@ -250,15 +250,16 @@ if __name__ == "__main__":
     pd.set_option('display.max_columns', None)
     plt.rcParams["figure.figsize"] = [14, 10]
 
-    # for subject in ["06","08", "09",'10']:
-    subject = input("Please input subject number in XX format: ")
-    emg_to_features(subject)
-    try:
-        # If all subject data files exisit, the dataset will be automatically generated/updated
-        from Dataset_generator import *
-        get_dataset(subject)
-        print("Dataset file been updated successfully.")
-    except:
-        pass
+    for subject in ["06","08", "09",'10', '13', '14']:
+    # subject = input("Please input subject number in XX format: ")
+        emg_to_features(subject)
+
+        try:
+            # If all subject data files exisit, the dataset will be automatically generated/updated
+            from Dataset_generator import *
+            get_dataset(subject)
+            print("Dataset file been updated successfully.")
+        except:
+            pass
 
     # plt.show()
