@@ -1,5 +1,6 @@
 from functools import partial
 from tensorflow.keras import layers, models
+import tensorflow as tf
 
 
 def create_lstm_model(window_object, stacked=3):
@@ -83,3 +84,18 @@ def create_ff_model(window_object):
     )
     nn_model.summary()
     return nn_model
+
+
+def model_callbacks(model_file):
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=model_file, save_weights_only=True,
+        monitor="val_loss", save_best_only=True,)
+
+    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss",
+                                                     min_delta=1e-3,
+                                                     factor=0.7,  patience=20)
+
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", 
+                                                  patience=50, restore_best_weights=True,)
+    callbacks = [checkpoint_callback, reduce_lr, early_stop]
+    return callbacks

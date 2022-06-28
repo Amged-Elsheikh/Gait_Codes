@@ -40,20 +40,6 @@ def create_window_generator(
                                     label_width, shift, batch_size)
     return window_object
 
-def model_callbacks(model_file):
-    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=model_file, save_weights_only=True,
-        monitor="val_loss", save_best_only=True,)
-
-    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss",
-                                                     min_delta=1e-3,
-                                                     factor=0.7,  patience=20)
-
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", 
-                                                  patience=50, restore_best_weights=True,)
-    callbacks = [checkpoint_callback, reduce_lr, early_stop]
-    return callbacks
-
 
 def train_fit(
     subject, tested_on, model_name, epochs=1, lr=0.001, eval_only=False, load_best=False
@@ -118,7 +104,6 @@ def train_fit(
     y_true = y_true[:, -1, :]
 
     ################ Evaluation and plot ################
-    weight = subject_details[f"S{test_subject}"]["weight"]
     r2_score = nan_R2(y_true, y_pred)
     rmse_result, nrmse, max_error = nan_rmse(y_true, y_pred)
     # Change the folder to the test subject folder after loading the model
