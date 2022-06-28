@@ -170,9 +170,8 @@ if __name__ == "__main__":
     subjects = ["06", "08", "09", '10', '13', '14']
 
     for test_subject in subjects:
-        if test_subject != '13':
-            continue
-        
+        # if test_subject not in [subjects[2*gpu_index], subjects[2*gpu_index + 1]]:
+        #     continue
         train_subjects = subjects.copy()
         train_subjects.remove(test_subject)
         predictions = {}
@@ -182,7 +181,7 @@ if __name__ == "__main__":
             tested_on=test_subject,
             model_name=model_name,
             epochs=1000,
-            eval_only=True,
+            eval_only=False,
             load_best=False)
 
         predictions[model_name] = y_pred
@@ -195,9 +194,9 @@ if __name__ == "__main__":
         plot_models(predictions, y_true, out_labels,
                     test_subject, "../Results/GM/")
         plt.close()
-    add_mean_std(r2_results)
-    add_mean_std(rmse_results)
-    add_mean_std(nrmse_results)
-    r2_results.to_csv("../Results/GM/R2_results.csv")
-    rmse_results.to_csv("../Results/GM/RMSE_results.csv")
-    nrmse_results.to_csv("../Results/GM/NRMSE_results.csv")
+    # add_mean_std(r2_results)
+    # add_mean_std(rmse_results)
+    # add_mean_std(nrmse_results)
+    r2_results.to_csv(f"../Results/GM/R2_results{gpu_index}.csv")
+    rmse_results.to_csv(f"../Results/GM/RMSE_results{gpu_index}.csv")
+    nrmse_results.to_csv(f"../Results/GM/NRMSE_results{gpu_index}.csv")
