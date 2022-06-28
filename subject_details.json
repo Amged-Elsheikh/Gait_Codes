@@ -175,10 +175,10 @@
               "val":[0], 
               "test":[0]},
 
-    "emg_sync": {"train_01":{"start":9.75, "length":193},
-                "train_02":{"start":5.92, "length":197},
-                "val":{"start":5.04, "length":77},
-                "test":{"start":7.46, "length":92}},
+    "emg_sync": {"train_01":{"start":9.70, "length":193},
+                "train_02":{"start":5.87, "length":197},
+                "val":{"start":4.99, "length":77},
+                "test":{"start":7.41, "length":92}},
 
     "motive_sync": {"train_01":{"start":7, "end":200},
                 "train_02":{"start":3, "end":200},
