@@ -113,9 +113,13 @@ def train_fit_gm(subject, tested_on, model_name, epochs=1, lr=0.001, eval_only=F
     ################ Evaluation and plot ################
     r2_score = nan_R2(y_true, y_pred)
     rmse_result, nrmse, max_error = nan_rmse(y_true, y_pred)
-    plot_results(y_true, y_pred, out_labels,
-                 r2_score, rmse_result, max_error,
-                 nrmse, folder)
+    plot_results(y_true, y_pred, out_labels, r2_score,
+                 rmse_result, max_error, nrmse, folder)
+    
+    for label in out_labels:
+        plot_data_only(y_true=y_true, y_pred=y_pred,
+                       label=label, subject=tested_on, 
+                       path=f"../Results/GM/{model_name}/", number_of_plots=6)
     return history, y_true, y_pred, r2_score, rmse_result, nrmse
 
 
@@ -181,7 +185,7 @@ if __name__ == "__main__":
             tested_on=test_subject,
             model_name=model_name,
             epochs=1000,
-            eval_only=False,
+            eval_only=True,
             load_best=False)
 
         predictions[model_name] = y_pred
@@ -197,6 +201,6 @@ if __name__ == "__main__":
     # add_mean_std(r2_results)
     # add_mean_std(rmse_results)
     # add_mean_std(nrmse_results)
-    r2_results.to_csv(f"../Results/GM/R2_results{gpu_index}.csv")
-    rmse_results.to_csv(f"../Results/GM/RMSE_results{gpu_index}.csv")
-    nrmse_results.to_csv(f"../Results/GM/NRMSE_results{gpu_index}.csv")
+    r2_results.to_csv(f"../Results/GM/R2_results.csv")
+    rmse_results.to_csv(f"../Results/GM/RMSE_results.csv")
+    nrmse_results.to_csv(f"../Results/GM/NRMSE_results.csv")

@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-
+import pandas as pd
 
 def plot_learning_curve(history, folder):
     if history == None:
@@ -23,7 +23,7 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, n
     tick_size = 12
     label_size = 14
     title_size = 20
-    plt.figure("Prediction", figsize=(11, 9))
+    plt.figure("Prediction", figsize=(7, 4))
     time = [i / 20 for i in range(len(y_true))]
     for i, col in enumerate(list(out_labels)):
         plt.subplot(len(out_labels), 1, i + 1)
@@ -86,3 +86,45 @@ def plot_models(predictions: dict, y_true, labels, subject, path: str):
         plt.draw()
         plt.savefig(f"{path}S{subject} {label} estimations.pdf")
         plt.savefig(f"{path}S{subject} {label} estimations.svg")
+        
+        
+def plot_data_only(y_true, y_pred, label, subject, path: str, number_of_plots=3):
+    df = pd.DataFrame({"measured" : y_true[:,0], "pred" : y_pred[:,0]})
+    df.index = df.index/20
+    periods = []
+    start_ = 0
+    i = 1
+    while i < len(df):
+        
+        if len(periods)>=number_of_plots:
+            break
+        
+        is_nan = df.iloc[i,:].isnull().values.any()
+        if not is_nan and df.iloc[i-1,:].isnull().values.any():
+            start_ = i
+            i += 1
+            while not df.iloc[i,:].isnull().values.any():
+                i += 1
+            periods.append(slice(start_ , i-1))
+        else:
+            i += 1
+    tick_size = 12
+    label_size = 14
+    title_size = 20
+    fig , axes = plt.subplots(1, number_of_plots, figsize=(12, 5), sharey=True)    
+    for i in range(number_of_plots):
+        axes[i].plot(df.iloc[periods[i], 0], "b", linewidth=2.5, label="measured moment")
+        axes[i].plot(df.iloc[periods[i], 1], "r--", linewidth=2, label="prediction")
+        axes[i].set_xticks([])
+        axes[i].set_xlim([periods[i].start/20, periods[i].stop/20])
+        axes[i].set_ylim([-1.7, 0.26])
+    axes[0].set_ylabel('Moment [Nm/kg]')
+    if subject!='13':
+        plt.legend(bbox_to_anchor=(1, -0.03), loc="upper right",
+                    borderaxespad=0, ncol=2, fontsize=label_size)
+    plt.tight_layout()
+    plt.savefig(f"{path}S{subject} {label} GM estimation.pdf")
+    plt.savefig(f"{path}S{subject} {label} GM estimation.svg")
+    plt.close()
+        
+        
