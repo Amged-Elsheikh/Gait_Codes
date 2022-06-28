@@ -1,7 +1,15 @@
 import pandas as pd
 import Force_convert_functions as grf
 import json
+from scipy.signal import butter, filtfilt
 import re
+
+def lowpass_filter(data):
+    f = 10  # Filter frequency
+    fs = 100 # Hz
+    low_pass = f/(fs/2)
+    b2, a2 = butter(N=6, Wn=low_pass, btype='lowpass')
+    return filtfilt(b2, a2, data, axis=0)
 
 
 def load_grf(subject, trial, side="L"):
@@ -46,6 +54,8 @@ def get_heel_starting_index(input_path):
     right_heel = unique_labels.index("R.Heel")*3 + 2
     left_heel_y_column = left_heel + 1
     right_heel_y_column = right_heel + 1
+    
+    
     return left_heel_y_column, right_heel_y_column
 
 
@@ -91,6 +101,7 @@ def get_periods(subject=None, trilas=["train_01", "train_02", "val", "test"]):
         output_dir = f"../Outputs/S{subject}/{date}/record_periods/S{subject}_{trial}_record_periods.csv"
         motive = load_heels_data(subject, trial)
         motive.columns = ['L.Heel', "R.Heel"]
+        motive.loc[:,['L.Heel', "R.Heel"]] = lowpass_filter(motive.loc[:,['L.Heel', "R.Heel"]])
         left_periods = pd.DataFrame(
             columns=['left_start', 'left_end', 'left_time'])
         right_periods = pd.DataFrame(
