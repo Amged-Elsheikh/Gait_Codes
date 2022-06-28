@@ -44,7 +44,7 @@ class WindowGenerator:
 
     @ property
     def features_columns(self):
-        return self.dataHandler.model_columns[:-self.output_num]
+        return self.dataHandler.model_columns[:self.features_num]
 
     @ property
     def features_num(self):
@@ -56,25 +56,26 @@ class WindowGenerator:
         Can handle each side-data separately or provide a full dataset if you want to work with a unidirectional model
         """
         return keras.preprocessing.timeseries_dataset_from_array(
-            data = data, targets = None,
-            sequence_length = self.total_window_size,
-            sequence_stride = 1, shuffle = False,
-            batch_size = self.batch_size,
+            data=data, targets=None,
+            sequence_length=self.total_window_size,
+            sequence_stride=1, shuffle=False,
+            batch_size=self.batch_size,
         )
 
     def split_window(self, features):
         # Take all EMG features and knee angle column
         # Shape is [Batch_size, timestep, features/labels]
-        inputs=features[:, self.input_slice, :-self.out_nums]
+        inputs = features[:, self.input_slice, :-self.out_nums]
         # Predict ankle angle & torque
-        labels=features[:, self.labels_slice, -self.out_nums:]
+        labels = features[:, self.labels_slice, -self.out_nums:]
         # Slicing doesn't preserve static shape information, so set the shapes manually. This way the `tf.data.Datasets` are easier to inspect.
         inputs.set_shape([None, self.input_width, None])
         labels.set_shape([None, self.label_width, None])
         return inputs, labels
 
+    @classmethod
     def preprocessing(
-        self, ds, remove_nan = True, shuffle = False,  batch_size = None, drop_reminder = False
+        self, ds, remove_nan=True, shuffle=False,  batch_size=None, drop_reminder=False
     ):
         """Will process batched dataset according to the inputs, then returned cached and prefetched the tf.data
 
@@ -88,19 +89,19 @@ class WindowGenerator:
         Returns:
             [prefetched tf.data]:
         """
-        ds=ds.unbatch()
+        ds = ds.unbatch()
         if remove_nan:
             def filter_nan(_, y):
                 return not tf.reduce_any(tf.math.is_nan(y))
 
-            ds=ds.filter(filter_nan)
-        ds=ds.cache()
+            ds = ds.filter(filter_nan)
+        ds = ds.cache()
         if shuffle:
-            ds=ds.shuffle(buffer_size = 16000, reshuffle_each_iteration=True)
-        if not batch_size:
-            batch_size=self.batch_size
-        ds=ds.batch(batch_size, drop_remainder = drop_reminder)
-        ds=ds.prefetch(tf.data.experimental.AUTOTUNE)
+            ds = ds.shuffle(buffer_size=16000, reshuffle_each_iteration=True)
+        # if not batch_size:
+        #     batch_size = self.batch_size
+        ds = ds.batch(batch_size, drop_remainder=drop_reminder)
+        ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
         return ds
 
     @ property
@@ -111,16 +112,15 @@ class WindowGenerator:
             prefetched tf.data: training set
         """
         # Prepare each trail sides
-        trail_01=self.IO_window(self.train_01_df)
-        trail_02=self.IO_window(self.train_02_df)
+        trail_01 = self.IO_window(self.train_01_df)
+        trail_02 = self.IO_window(self.train_02_df)
         # stack trails datasets
-        train_ds=trail_01.concatenate(trail_02)
+        train_ds = trail_01.concatenate(trail_02)
         # Split window data to input and output and store results
-        train_ds=train_ds.map(self.split_window)
+        train_ds = train_ds.map(self.split_window)
         # Shufffle the train dataset
-        train_ds=self.preprocessing(
-            train_ds, shuffle = True, drop_reminder = True, remove_nan = True
-        )
+        train_ds = self.preprocessing(train_ds, shuffle=True, batch_size=self.batch_size,
+                                      drop_reminder=True, remove_nan=True)
         return train_ds
 
     @property
@@ -135,13 +135,8 @@ class WindowGenerator:
         # Split window data to input and output and store results
         val_ds = val_ds.map(self.split_window)
         # Make the batch size as big as possible
-        val_ds = self.preprocessing(
-            val_ds,
-            batch_size=16000,
-            shuffle=False,
-            drop_reminder=False,
-            remove_nan=True,
-        )
+        val_ds = self.preprocessing(val_ds, shuffle=False, batch_size=16000,
+                                    drop_reminder=False, remove_nan=True)
         return val_ds
 
     @property
@@ -156,33 +151,9 @@ class WindowGenerator:
         # Split window data to input and output and store results
         test_ds = test_ds.map(self.split_window)
         # Make the batch size as big as possible
-        test_ds = self.preprocessing(
-            test_ds,
-            batch_size=16000,
-            shuffle=False,
-            drop_reminder=False,
-            remove_nan=False,
-        )
+        test_ds = self.preprocessing(test_ds, shuffle=False, batch_size=16000,
+                                     drop_reminder=False, remove_nan=False)
         return test_ds
-
-    def get_gm_train_val_dataset(self):
-        """Get the training and validation datasets for GMs. test dataset is used for the training. self.preprocessing will be implemented in the GM python file
-
-        Returns:
-            [type]: [description]
-        """
-        trail_01 = self.IO_window(self.train_01_df)
-        trail_02 = self.IO_window(self.train_02_df)
-        val_ds = self.IO_window(self.val_df)
-        test_ds = self.IO_window(self.test_df)
-        # stack trails datasets
-        # Add validation set to the training set and use test set for validation
-        train_ds = trail_01.concatenate(trail_02)
-        train_ds = train_ds.concatenate(test_ds)
-        # Split window data to input and output and store results
-        train_ds = train_ds.map(self.split_window)
-        val_ds = val_ds.map(self.split_window)
-        return train_ds, val_ds
 
     def make_dataset(self):
         """Make train/val/test datasets for individual models. Test dataset can be used to test GM also.
@@ -197,3 +168,50 @@ class WindowGenerator:
                 f"output timestep: {self.label_width}",
             ]
         )
+        
+        
+class GM_WindowGenerator(WindowGenerator):
+    @ property
+    def train_dataset(self):
+        """Make the training dataset for the indiviual models from train_01 and train_02.
+
+        Returns:
+            prefetched tf.data: training set
+        """
+        # Prepare each trail sides
+        trail_01 = self.IO_window(self.train_01_df)
+        trail_02 = self.IO_window(self.train_02_df)
+        # stack trails datasets
+        train_ds = trail_01.concatenate(trail_02)
+        # Split window data to input and output and store results
+        train_ds = train_ds.map(self.split_window)
+        return train_ds
+
+    @property
+    def val_dataset(self):
+        """Make the validation dataset for the indiviual models.
+
+        Returns:
+            prefetched tf.data: validation set
+        """
+        # prepare sides
+        val_ds = self.IO_window(self.val_df)
+        # Split window data to input and output and store results
+        val_ds = val_ds.map(self.split_window)
+        return val_ds
+
+    @property
+    def evaluation_set(self):
+        """Make the evaluation dataset for the indiviual models. In validation set, remove the NaN values but in evaluation set NaN values are important.
+
+        Returns:
+            prefetched tf.data: evaluation set
+        """
+        # prepare sides
+        test_ds = self.IO_window(self.test_df)
+        # Split window data to input and output and store results
+        test_ds = test_ds.map(self.split_window)
+        # Make the batch size as big as possible
+        test_ds = self.preprocessing(test_ds, shuffle=False, batch_size=16000,
+                                     drop_reminder=False, remove_nan=False)
+        return test_ds
