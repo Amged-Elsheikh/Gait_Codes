@@ -1,5 +1,6 @@
 import json
 import os
+from functools import partial
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -111,6 +112,11 @@ def train_fit(
     plot_results(y_true, y_pred, out_labels,
                  r2_score, rmse_result, max_error,
                  nrmse, folder)
+    
+    for label in out_labels:
+        plot_data_only(y_true=y_true, y_pred=y_pred,
+                       label=label, subject=tested_on, 
+                       path=f"../Results/indiviuals/{model_name}/", number_of_plots=6)
     return history, y_true, y_pred, r2_score, rmse_result, nrmse
 
 
@@ -131,65 +137,69 @@ if __name__ == "__main__":
 
     # Choose features and labels
     # Used EMG features
-    features = ["RMS", "ZC", "WL", "AR"]
+    features = ["MAV", "WL"]
 
     # Used sensors
     sensors = [6, 7, 8, 9]
     sensors = [f'sensor {x}' for x in sensors]
+    # Labels to be predicted
+    joints = ['ankle']
+    losses = {'ankle': 2, 'knee': 1}
+
     # True if you want to use knee angle as an extra input
     add_knee = False
-    # Labels to be predicted
-    out_labels = ["ankle moment"]
-    # Loss factor to prevent ankle slip
-    loss_factor = 2
-    # Window object parameters
+    for joint in joints:
+        out_labels = [f"{joint} moment", ]
+        # Loss factor to prevent ankle slip
+        loss_factor = losses[joint]
+        # Window object parameters
 
-    input_width = 20
-    shift = 1
-    label_width = 1
-    batch_size = 8
+        input_width = 20
+        shift = 1
+        label_width = 1
+        batch_size = 8
 
-    window_generator = partial(create_window_generator,
-                               input_width=input_width, shift=shift,
-                               label_width=label_width,
-                               batch_size=batch_size, features=features,
-                               sensors=sensors, add_knee=add_knee,
-                               out_labels=out_labels)
-    model_dic = {}
-    model_dic["FF model"] = create_ff_model
-    model_dic["CNN model"] = create_conv_model
-    model_dic["LSTM model"] = create_lstm_model
+        window_generator = partial(create_window_generator,
+                                   input_width=input_width, shift=shift,
+                                   label_width=label_width,
+                                   batch_size=batch_size, features=features,
+                                   sensors=sensors, add_knee=add_knee,
+                                   out_labels=out_labels)
+        model_dic = {}
+        # model_dic["FF model"] = create_ff_model
+        model_dic["CNN model"] = create_conv_model
+        # model_dic["LSTM model"] = create_lstm_model
+        # model_dic["Knee LSTM model"] = knee_lstm_model
 
-    r2_results = pd.DataFrame(columns=model_dic.keys())
-    rmse_results = pd.DataFrame(columns=model_dic.keys())
-    nrmse_results = pd.DataFrame(columns=model_dic.keys())
-    predictions = {}
+        r2_results = pd.DataFrame(columns=model_dic.keys())
+        rmse_results = pd.DataFrame(columns=model_dic.keys())
+        nrmse_results = pd.DataFrame(columns=model_dic.keys())
+        predictions = {}
 
-    subjects = ["06", "08", "09"]
-    for test_subject in subjects:
-        for model_name in model_dic:
-            history, y_true, y_pred, r2, rmse, nrmse = train_fit(
-                subject=test_subject,
-                tested_on=None,
-                model_name=model_name,
-                epochs=1000, lr=0.001,
-                eval_only=False,
-                load_best=False,)
+        for subject in ["06", '08', '09', '10', '13', '14']:
+            for model_name in model_dic:
+                history, y_true, y_pred, r2, rmse, nrmse = train_fit(
+                    subject=subject,
+                    tested_on=None,
+                    model_name=model_name,
+                    epochs=1000, lr=0.001,
+                    eval_only=True,
+                    load_best=False,)
 
-            predictions[model_name] = y_pred
+                predictions[model_name] = y_pred
 
-            r2_results.loc[f"S{test_subject}", model_name] = r2[0]
-            rmse_results.loc[f"S{test_subject}", model_name] = rmse[0]
-            nrmse_results.loc[f"S{test_subject}", model_name] = nrmse[0]
-            # print(model_name)
+                r2_results.loc[f"S{subject}", model_name] = r2[0]
+                rmse_results.loc[f"S{subject}", model_name] = rmse[0]
+                nrmse_results.loc[f"S{subject}", model_name] = nrmse[0]
+                # print(model_name)
+                plt.close()
+            plot_models(predictions, y_true, out_labels, subject,
+                        path="../Results/indiviuals/",)
             plt.close()
-        plot_models(predictions, y_true, out_labels, test_subject,
-                    path="../Results/indiviuals/",)
-        plt.close()
     add_mean_std(r2_results)
     add_mean_std(rmse_results)
     add_mean_std(nrmse_results)
-    
+
     r2_results.to_csv("../Results/indiviuals/R2_results.csv")
     rmse_results.to_csv("../Results/indiviuals/RMSE_results.csv")
     nrmse_results.to_csv("../Results/indiviuals/NRMSE_results.csv")

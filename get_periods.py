@@ -91,16 +91,20 @@ def get_heel_strike(end: int, data: pd.DataFrame, safety_factor=20):
 def get_periods(subject=None, trilas=["train_01", "train_02", "val", "test"]):
     if subject == None:
         subject = input("Enter subject number in XX format\n")
+    subject = f"{int(subject):02d}"
+
         
     with open("subject_details.json", "r") as f:
-        subject_details = json.load(f)
+        subject_details = json.load(f)[f"S{subject}"]
         
-    date = subject_details[f"S{subject}"]["date"]
-    sides = subject_details[f"S{subject}"]["sides"]
+    date = subject_details["date"]
+    sides = subject_details["sides"]
+
     for trial in trilas:
         output_dir = f"../Outputs/S{subject}/{date}/record_periods/S{subject}_{trial}_record_periods.csv"
         motive = load_heels_data(subject, trial)
         motive.columns = ['L.Heel', "R.Heel"]
+        # Smooth the Mocap signal
         motive.loc[:,['L.Heel', "R.Heel"]] = lowpass_filter(motive.loc[:,['L.Heel', "R.Heel"]])
         left_periods = pd.DataFrame(
             columns=['left_start', 'left_end', 'left_time'])
@@ -127,4 +131,8 @@ def get_periods(subject=None, trilas=["train_01", "train_02", "val", "test"]):
 
 
 if __name__ == '__main__':
-    get_periods()
+    subject=None
+    if subject:
+        subject = f"{int(subject):02d}"
+    trilas=["train_01", "train_02", "val", "test"]
+    get_periods(subject, trilas)
