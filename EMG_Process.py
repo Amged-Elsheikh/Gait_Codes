@@ -7,28 +7,26 @@
 """
 import json
 import re
-from statsmodels.tsa.ar_model import AutoReg
-from scipy import signal
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
 from warnings import simplefilter
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy import signal
+from statsmodels.tsa.ar_model import AutoReg
 
 # Setups
 simplefilter(action='ignore', category=FutureWarning)
-
 WINDOW_LENGTH = 0.2
 SLIDING_WINDOW_STRIDE = 0.05
-
-# %%
 
 
 def get_emg_files(subject: str, trials: list) -> str:
     """This function will return I/O directories stored in two lists.
     """
     with open("subject_details.json", "r") as file:
-        subject_details = json.load(file)
-        date = subject_details[f"S{subject}"]["date"]
+        subject_details = json.load(file)[f"S{subject}"]
+        date = subject_details["date"]
 
     # Get I/O data directory
     inputs_path = f"../Data/S{subject}/{date}/EMG/"
@@ -44,7 +42,7 @@ def get_emg_files(subject: str, trials: list) -> str:
 
 def load_emg_data(subject: str, emg_file: str) -> pd.DataFrame:
     with open("subject_details.json", "r") as file:
-        subject_details = json.load(file)
+        subject_details = json.load(file)[f"S{subject}"]["emg_sync"]
 
     emg = pd.read_csv(emg_file, header=0)
     # Rename time column
@@ -59,8 +57,8 @@ def load_emg_data(subject: str, emg_file: str) -> pd.DataFrame:
     # Subset EMG data
     trial = re.sub(".*S[0-9]*_", "", emg_file)
     trial = re.sub("_[a-zA-Z].*", "", trial)
-    start = subject_details[f"S{subject}"]["emg_sync"][trial]["start"]
-    end = start + subject_details[f"S{subject}"]["emg_sync"][trial]["length"]
+    start = subject_details[trial]["start"]
+    end = start + subject_details[trial]["length"]
     emg = emg.loc[(start <= emg.index) & (emg.index <= end)]
     emg = emg - emg.mean()
     return emg
@@ -77,8 +75,6 @@ def remove_outlier(data, detect_factor=10, remove_factor=20):
 
 def segmant(emg, start, end):
     return emg.loc[(emg.index >= start) & (emg.index <= end), :]
-
-# %%
 
 
 def bandpass_filter(window, order=4, lowband=20, highband=450):
@@ -133,28 +129,39 @@ def get_AR_coeffs(window, num_coeff=6):
     return parameters
 
 
-def get_single_window_features(filtered_window, ar_order):
-    features_function = [wave_length, get_ZC, get_RMS, get_MAV]
+def get_single_window_features(filtered_window, features_names, ar_order):
+
+    features_dict = {"RMS": get_RMS,
+                     "MAV": get_MAV,
+                     "WL": wave_length,
+                     "ZC": get_ZC, }
+
+    features_function = [features_dict[feature]
+                         for feature in features_names if "AR" not in feature]
+
     features = np.vstack([foo(filtered_window)
                          for foo in features_function]).transpose()
-    return np.hstack((features, get_AR_coeffs(filtered_window, ar_order))).flatten()
+
+    if ar_order:
+        features = np.hstack(
+            (features, get_AR_coeffs(filtered_window, ar_order)))
+
+    return features.flatten()
 
 
-def process_emg(emg):
+def process_emg(emg, features_names=["RMS", "MAV", "WL", "ZC"], ar_order=4):
     """
     EMG has zero mean and no artifacts. This function will segmant the data, filter it and apply features extraction methods to return the dataset.
     """
-    features_names = ["WL", "ZC", "RMS", "MAV"]
-    ar_order = 4
-    
-    features_names.extend([f"AR{i}" for i in range(1, ar_order+1)])
+    if ar_order:
+        features_names.extend([f"AR{i}" for i in range(1, ar_order+1)])
+
     df_col = []
     for emg_num in range(1, emg.shape[1]+1):
         df_col.extend([f"sensor {emg_num} {f}" for f in features_names])
+
     dataset = pd.DataFrame(columns=df_col)
 
-    # Remove artifacts
-    # emg = remove_outlier(emg)
     start = 0
     end = WINDOW_LENGTH
     time_limit = max(emg.index)
@@ -167,7 +174,7 @@ def process_emg(emg):
         #
         window = np.diff(window, axis=0)/0.0009
         # Get features
-        features = get_single_window_features(window, ar_order)
+        features = get_single_window_features(window, features_names, ar_order)
         # Update data frame
         dataset.loc[len(dataset)] = features
         start += SLIDING_WINDOW_STRIDE
@@ -178,55 +185,12 @@ def process_emg(emg):
 
     dataset.set_index("time", inplace=True)
     return dataset
-# %%
 
 
-def plot_all_emg(emg, plot_time_range=None, file_name='', trial=''):
-    muscles = ["RF", "VM", "VL", "BF", "Semitendinous",
-               "TA", "GAS", "Sol", "PB", ]
-    tight_muscles = ["RF", "VM", "VL", "BF", "Semitendinous"]
-    shank_muscles = ["TA", "GAS", "Sol", "PB", ]
-    muscles = {muscle: sensor for muscle, sensor in zip(muscles, emg.columns)}
-
-    if plot_time_range == None:
-        plot_time_range = (emg.index[0], emg.index[-1])
-    start = plot_time_range[0]
-    end = plot_time_range[1]
-
-    def plot_muscle_group(muscles_group_name: str):
-        if muscles_group_name == "Shank":
-            muscles_group = shank_muscles
-        elif muscles_group_name == "Tight":
-            muscles_group = tight_muscles
-
-        plt.figure(f"{trial} {muscles_group_name}")
-        for i, muscle in enumerate(muscles_group):
-            plt.subplot(len(muscles_group), 1, i+1)
-            plt.plot(emg.index, emg.loc[:, muscles[muscle]])
-            plt.title(muscle)
-            plt.xlim((start, end+0.01))
-            plt.ylabel("Magnitude")
-            plt.grid()
-
-        plt.xlabel("Time [s]")
-        plt.suptitle(file_name)
-        plt.tight_layout()
-        plt.draw()
-    plot_muscle_group('Tight')
-    plot_muscle_group('Shank')
-
-
-def plot_feature(dataset, feature, trial):
-    RMS_data = dataset.filter(regex="RMS")
-    plot_all_emg(RMS_data, None, feature, trial)
-
-
-def emg_to_features(subject=None):
+def emg_to_features(subject=None, trials=["train_01", "train_02", "val", "test"], features_names=["RMS", "MAV", "WL", "ZC"], ar_order=4):
     if not subject:
-        subject = input("Please input subject number in XX format: ")
-
-    # Set experements trials
-    trials = ["test", "train_01", "train_02", "val"]
+        subject = input("Please input subject number: ")
+        subject = f"{int(subject):02d}"
     # Get EMG files directories
     inputs_names, output_files = get_emg_files(subject, trials)
 
@@ -238,21 +202,22 @@ def emg_to_features(subject=None):
         # Remove artifacts
         emg = remove_outlier(emg)  # Un-efficient method used
         # preprocess the data to get features
-        dataset = process_emg(emg)
+        dataset = process_emg(emg, features_names, ar_order)
         # save dataset
         dataset.to_csv(output_file)
+
         # Plot data
         # plot_feature(dataset, "RMS", trial)
-
-
-# %%
 if __name__ == "__main__":
-    pd.set_option('display.max_columns', None)
-    plt.rcParams["figure.figsize"] = [14, 10]
+    DEMG = True
+    trials = ["train_01", "train_02", "val", "test"]
+    features_names = ["RMS", "MAV", "WL", "ZC"]
+    ar_order = 4
 
-    for subject in ["06","08", "09",'10', '13', '14']:
-    # subject = input("Please input subject number in XX format: ")
-        emg_to_features(subject)
+    for subject in [6, 8, 9, 10, 13, 14]:
+        # subject = input("Please input subject number: ")
+        subject = f"{int(subject):02d}"
+        emg_to_features(subject, trials, features_names, ar_order)
 
         try:
             # If all subject data files exisit, the dataset will be automatically generated/updated
