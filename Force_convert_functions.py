@@ -4,13 +4,14 @@ import re
 from scipy.signal import butter, filtfilt
 import numpy as np
 import pandas as pd
+
 pd.set_option('mode.chained_assignment', None)
 
 
 def get_IO_dir(subject, trials):
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
-        
+
     date = subject_details[f"S{subject}"]["date"]
     input_path = f"../Data/S{subject}/{date}/Dynamics/Force_Data/"
     output_path = f"../OpenSim/S{subject}/{date}/Dynamics/Force_Data/"
@@ -73,10 +74,10 @@ def grf_periods(data, trigger=5):
 def apply_filter(data, subject, trigger=5):
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
-    
+
     stance_periods = grf_periods(data, trigger)
-    f = 10  # Filter frequency
     fs = subject_details[f"S{subject}"]["FP_sampling_rate"]  # Hz
+    f = fs/20  # Filter frequency
     low_pass = f/(fs/2)
     b2, a2 = butter(N=6, Wn=low_pass, btype='lowpass')
     columns = [" Fx", " Fy", " Fz",
@@ -84,17 +85,19 @@ def apply_filter(data, subject, trigger=5):
 
     data[' Cx'] = -data[' My']/data[' Fz']
     data[' Cy'] = data[' Mx']/data[' Fz']
-    data[' Cx'].loc[abs(data[' Cx'])>0.25] = 0
-    data[' Cy'].loc[abs(data[' Cy'])>0.25] = 0
+    data[' Cx'].loc[abs(data[' Cx']) > 0.25] = 0
+    data[' Cy'].loc[abs(data[' Cy']) > 0.25] = 0
     # apply filter
     for stance in stance_periods:
         condition = (data["MocapFrame"] >= stance.start-5) & (
             data["MocapFrame"] <= stance.stop+5)
         data.loc[condition, columns] = filtfilt(
             b2, a2, data.loc[condition, columns], axis=0)
-    ##     CoP are calculated from the Force and Moment. Filter CoP by recalculate it from the filtered data. Note that the CoP will grow when foot outside force plate.
-        data.loc[condition, " Cx"] = -data.loc[condition, " My"]/data.loc[condition, " Fz"]
-        data.loc[condition, " Cy"] = data.loc[condition," Mx"] / data.loc[condition, " Fz"]
+    # CoP are calculated from the Force and Moment. Filter CoP by recalculate it from the filtered data. Note that the CoP will grow when foot outside force plate.
+        data.loc[condition, " Cx"] = - \
+            data.loc[condition, " My"]/data.loc[condition, " Fz"]
+        data.loc[condition, " Cy"] = data.loc[condition,
+                                              " Mx"] / data.loc[condition, " Fz"]
     return data
 
 
@@ -121,7 +124,7 @@ def system_match(data):
 def shift_data(data, shift_key):
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
-        
+
     shift_value = subject_details[f"S{subject}"]["delay"][shift_key][0]
     if shift_value != 0:
         shift_columns = [' Fx', ' Fz', ' Fy',
@@ -167,11 +170,10 @@ def save_force_data(force_data, output_path, output_name):
                 f'nRows={nRows}\n' + f'nColumns={nColumns}\n' + 'inDegrees=yes\n' + 'endheader\n' + old)
 
 
-if __name__ == '__main__':
-    # Get files names
-    trials = ["train_01", "train_02", "val", "test"]
-    subject = input(f"insert subject number in XX format: ")
-    # for subject in ["10",'11']:
+def GRF_to_OpenSim(subject, trials=["train_01", "train_02", "val", "test"], use_filter=False, offset_remove=False):
+    if subject == None:
+        subject = input(f"insert subject number: ")
+    subject = f"{int(subject):02d}"
 
     input_path, output_path, files = get_IO_dir(subject, trials)
 
@@ -180,7 +182,7 @@ if __name__ == '__main__':
         # Load Left force plates data
         data = pd.read_csv(input_path+file, header=31, low_memory=False)
 
-        # prepare time
+        # Crop the data to get the actual experement
         data = trial_period(data, subject, trials[i])
 
         # System sometimes stop sending data for few frames
@@ -190,10 +192,12 @@ if __name__ == '__main__':
         data = shift_data(data, shift_key=trials[i])
 
         # Remove the offset from the data
-        # data = remove_offset(data)
+        if offset_remove:
+            data = remove_offset(data)
 
         # Apply low pass filter
-        # data = apply_filter(data, subject)
+        if use_filter:
+            data = apply_filter(data, subject)
 
         # Match devices coordinate system
         data = system_match(data)
@@ -203,3 +207,13 @@ if __name__ == '__main__':
         # Save force data
         output_name = re.sub("_forceplate_[0-9].csv", "_grf.sto", file)
         save_force_data(force_data, output_path, output_name)
+
+
+if __name__ == '__main__':
+    trials = ["train_01", "train_02", "val", "test"]
+    subject = None
+    if subject:
+        subject = f"{int(subject):02d}"
+
+    GRF_to_OpenSim(subject, use_filter=False, offset_remove=False,
+                   trials=["train_01", "train_02", "val", "test"])
