@@ -100,7 +100,7 @@ def plot_data_only(y_true, y_pred, label, subject, path: str, number_of_plots=3)
             break
         
         is_nan = df.iloc[i,:].isnull().values.any()
-        if not is_nan and df.iloc[i-1,:].isnull().values.any():
+        if (not is_nan and df.iloc[i-1,:].isnull().values.any()) or (i==1 and not is_nan):
             start_ = i
             i += 1
             while not df.iloc[i,:].isnull().values.any():
@@ -117,14 +117,17 @@ def plot_data_only(y_true, y_pred, label, subject, path: str, number_of_plots=3)
         axes[i].plot(df.iloc[periods[i], 1], "r--", linewidth=2, label="prediction")
         axes[i].set_xticks([])
         axes[i].set_xlim([periods[i].start/20, periods[i].stop/20])
-        axes[i].set_ylim([-1.7, 0.26])
+        if label=='ankle':
+            axes[i].set_ylim([-1.7, 0.26])
+        elif label=='knee':
+            axes[i].set_ylim([-0.6, 0.6])
     axes[0].set_ylabel('Moment [Nm/kg]')
-    if subject!='13':
+    if subject!='13' or label=='knee':
         plt.legend(bbox_to_anchor=(1, -0.03), loc="upper right",
                     borderaxespad=0, ncol=2, fontsize=label_size)
     plt.tight_layout()
-    plt.savefig(f"{path}S{subject} {label} GM estimation.pdf")
-    plt.savefig(f"{path}S{subject} {label} GM estimation.svg")
+    plt.savefig(f"{path}S{subject} {label} estimation.pdf")
+    plt.savefig(f"{path}S{subject} {label} estimation.svg")
     plt.close()
         
         
