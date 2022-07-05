@@ -103,12 +103,14 @@ def process_trc(markers_trajectories, Output, Markers_Label):
 
 def csv2trc(subject=None, motion_types=None):
     if subject == None:
-        subject = input("insert subject number in XX format: ")
+        subject = input("insert subject number: ")
+    
+    subject = f"{int(subject):02d}"
 
     if motion_types == None:
         motion_types = ("static", "dynamic")
     elif type(motion_types) == str:
-        motion_types = [motion_types, ]
+        motion_types = (motion_types, )
 
     flag = True
     for motion_type in motion_types:
