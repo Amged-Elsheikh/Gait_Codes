@@ -126,9 +126,10 @@ if __name__ == "__main__":
         raise print("No GPU found")
     else:
         gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-        gpu_index = 0
+        gpu_index = -1
         tf.config.experimental.set_visible_devices(
             devices=gpus[gpu_index], device_type='GPU')
+        tf.config.experimental.set_memory_growth(gpus[gpu_index], True)
 
     tf.random.set_seed(42)
 
