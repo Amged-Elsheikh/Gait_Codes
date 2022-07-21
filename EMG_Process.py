@@ -149,7 +149,7 @@ def get_single_window_features(filtered_window, features_names, ar_order):
     return features.flatten()
 
 
-def process_emg(emg, features_names=["RMS", "MAV", "WL", "ZC"], ar_order=4):
+def process_emg(emg, features_names=["RMS", "MAV", "WL", "ZC"], ar_order=4, use_DEMG=True):
     """
     EMG has zero mean and no artifacts. This function will segmant the data, filter it and apply features extraction methods to return the dataset.
     """
@@ -171,8 +171,9 @@ def process_emg(emg, features_names=["RMS", "MAV", "WL", "ZC"], ar_order=4):
         window = segmant(emg, start, end)
         # Filter segmanted data
         window = emg_filter(window)
-        #
-        window = np.diff(window, axis=0)/0.0009
+        # differentiation
+        if use_DEMG:
+            window = np.diff(window, axis=0)/0.0009
         # Get features
         features = get_single_window_features(window, features_names, ar_order)
         # Update data frame
@@ -187,7 +188,12 @@ def process_emg(emg, features_names=["RMS", "MAV", "WL", "ZC"], ar_order=4):
     return dataset
 
 
-def emg_to_features(subject=None, trials=["train_01", "train_02", "val", "test"], features_names=["RMS", "MAV", "WL", "ZC"], ar_order=4):
+def emg_to_features(subject=None,
+                    trials=["train_01", "train_02", "val", "test"],
+                    features_names=["RMS", "MAV", "WL", "ZC"],
+                    ar_order=4,
+                    use_DEMG=True):
+
     if not subject:
         subject = input("Please input subject number: ")
         subject = f"{int(subject):02d}"
@@ -202,7 +208,7 @@ def emg_to_features(subject=None, trials=["train_01", "train_02", "val", "test"]
         # Remove artifacts
         emg = remove_outlier(emg)  # Un-efficient method used
         # preprocess the data to get features
-        dataset = process_emg(emg, features_names, ar_order)
+        dataset = process_emg(emg, features_names, ar_order, use_DEMG)
         # save dataset
         dataset.to_csv(output_file)
 
@@ -213,11 +219,13 @@ if __name__ == "__main__":
     trials = ["train_01", "train_02", "val", "test"]
     features_names = ["RMS", "MAV", "WL", "ZC"]
     ar_order = 4
+    use_DEMG = True
 
     for subject in [6, 8, 9, 10, 13, 14]:
         # subject = input("Please input subject number: ")
         subject = f"{int(subject):02d}"
-        emg_to_features(subject, trials, features_names, ar_order)
+        print(subject)
+        emg_to_features(subject, trials, features_names, ar_order, use_DEMG)
 
         try:
             # If all subject data files exisit, the dataset will be automatically generated/updated
