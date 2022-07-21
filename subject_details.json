@@ -298,7 +298,7 @@
     "emg_sync": {"train_01":{"start":5.7175, "length":205},
                 "train_02":{"start":5.59725, "length":198},
                 "val":{"start":5.555, "length":76},
-                "test":{"start":7.72425, "length":72}},
+                "test":{"start":7.27425, "length":72}},
 
     "motive_sync": {"train_01":{"start":3, "end":208},
                 "train_02":{"start":3, "end":201},
