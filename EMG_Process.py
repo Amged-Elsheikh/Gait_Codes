@@ -153,12 +153,13 @@ def process_emg(emg, features_names=["RMS", "MAV", "WL", "ZC"], ar_order=4, use_
     """
     EMG has zero mean and no artifacts. This function will segmant the data, filter it and apply features extraction methods to return the dataset.
     """
+    features_copy_list = features_names.copy()
     if ar_order:
-        features_names.extend([f"AR{i}" for i in range(1, ar_order+1)])
+        features_copy_list.extend([f"AR{i}" for i in range(1, ar_order+1)])
 
     df_col = []
     for emg_num in range(1, emg.shape[1]+1):
-        df_col.extend([f"sensor {emg_num} {f}" for f in features_names])
+        df_col.extend([f"sensor {emg_num} {f}" for f in features_copy_list])
 
     dataset = pd.DataFrame(columns=df_col)
 
@@ -175,7 +176,7 @@ def process_emg(emg, features_names=["RMS", "MAV", "WL", "ZC"], ar_order=4, use_
         if use_DEMG:
             window = np.diff(window, axis=0)/0.0009
         # Get features
-        features = get_single_window_features(window, features_names, ar_order)
+        features = get_single_window_features(window, features_copy_list, ar_order)
         # Update data frame
         dataset.loc[len(dataset)] = features
         start += SLIDING_WINDOW_STRIDE
