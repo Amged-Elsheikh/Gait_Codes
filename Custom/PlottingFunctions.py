@@ -67,8 +67,8 @@ def plot_models(predictions: dict, y_true, labels, subject, path: str):
         for i, model_name in enumerate(predictions.keys()):
             # Create subplots
             plt.subplot(len(predictions.keys()), 1, i+1)
-            plt.plot(time, y_true[:, j], "b", linewidth=2.5, label="measured moment")
-            plt.plot(time, predictions[model_name][:, j], "r--", linewidth=2, label="prediction")
+            plt.plot(time, y_true[:, j], "b", linewidth=2, label="measured moment")
+            plt.plot(time, predictions[model_name][:, j], "r--", linewidth=1.5, label="prediction")
             plt.title(model_name, fontsize=title_size)
             plt.xlim((0, 9))
             plt.ylabel("Moment [Nm/kg]", fontsize=label_size)
@@ -113,8 +113,8 @@ def plot_data_only(y_true, y_pred, label, subject, path: str, number_of_plots=3)
     title_size = 20
     fig , axes = plt.subplots(1, number_of_plots, figsize=(12, 5), sharey=True)    
     for i in range(number_of_plots):
-        axes[i].plot(df.iloc[periods[i], 0], "b", linewidth=2.5, label="measured moment")
-        axes[i].plot(df.iloc[periods[i], 1], "r--", linewidth=2, label="prediction")
+        axes[i].plot(df.iloc[periods[i], 0], "b", linewidth=2, label="measured moment")
+        axes[i].plot(df.iloc[periods[i], 1], "r--", linewidth=1.5, label="prediction")
         axes[i].set_xticks([])
         axes[i].set_xlim([periods[i].start/20, periods[i].stop/20])
         if label=='ankle':
