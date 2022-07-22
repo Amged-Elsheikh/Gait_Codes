@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-def plot_learning_curve(history, folder):
+def plot_learning_curve(history, folders:list):
     if history == None:
         print("No train history was found")
     else:
@@ -16,10 +16,11 @@ def plot_learning_curve(history, folder):
         plt.xlabel("Epochs")
         plt.ylabel("loss")
         plt.draw()
-        plt.savefig(f"{folder}learning_curve.pdf")
+        for folder in folders:
+            plt.savefig(folder)
 
 
-def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, nrmse, folder):
+def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, nrmse, folders:list):
     tick_size = 12
     label_size = 14
     title_size = 20
@@ -32,24 +33,24 @@ def plot_results(y_true, y_pred, out_labels, R2_score, rmse_result, max_error, n
         print(f"{col} max error is {max_error[i]}Nm/Kg")
         print(f"{col} nRMSE is {nrmse[i]}Nm/Kg")
         
-        plt.plot(time, y_true[:, i], "b-", linewidth=2.5)
-        plt.plot(time, y_pred[:, i], "r--", linewidth=2,)
+        plt.plot(time, y_true[:, i], "b-", linewidth=1.5)
+        plt.plot(time, y_pred[:, i], "r--", linewidth=1,)
         plt.title(col, fontsize=title_size)
         if i == 0:
-            plt.legend(["measured moment", "prediction"], fontsize=label_size)
+            plt.legend(["Measurments", "Estimations"], fontsize=label_size)
         plt.xlim((0, 9))
         plt.xlabel("Time [s]", fontsize=label_size)
         if "moment" in col:
-            plt.ylabel("Moment [Nm/kg]", fontsize=label_size)
+            plt.ylabel(f"{col} [Nm/kg]", fontsize=label_size)
         else:
-            plt.ylabel("Angle [Degree]", fontsize=label_size)
+            plt.ylabel(f"{col} [Degree]", fontsize=label_size)
         plt.xticks(fontsize=tick_size)
         plt.yticks(fontsize=tick_size)
         plt.grid(True)
         plt.axhline(y=0, color='black', linestyle='-')
     plt.tight_layout()
-    plt.savefig(f"{folder}Predictions.pdf")
-    plt.savefig(f"{folder}Predictions.svg")
+    for folder in folders:
+        plt.savefig(folder)
     plt.draw()
 
 
@@ -88,7 +89,7 @@ def plot_models(predictions: dict, y_true, labels, subject, path: str):
         plt.savefig(f"{path}S{subject} {label} estimations.svg")
         
         
-def plot_data_only(y_true, y_pred, label, subject, path: str, number_of_plots=3):
+def plot_data_only(y_true, y_pred, label, subject, folders: list, number_of_plots=3):
     df = pd.DataFrame({"measured" : y_true[:,0], "pred" : y_pred[:,0]})
     df.index = df.index/20
     periods = []
@@ -126,8 +127,8 @@ def plot_data_only(y_true, y_pred, label, subject, path: str, number_of_plots=3)
         plt.legend(bbox_to_anchor=(1, -0.03), loc="upper right",
                     borderaxespad=0, ncol=2, fontsize=label_size)
     plt.tight_layout()
-    plt.savefig(f"{path}S{subject} {label} estimation.pdf")
-    plt.savefig(f"{path}S{subject} {label} estimation.svg")
-    plt.close()
+    for folder in folders:
+        plt.savefig(folder)
+    plt.draw()
         
         
