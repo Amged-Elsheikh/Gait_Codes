@@ -329,6 +329,29 @@
                 "train_02":{"start":1, "end":206},
                 "val":{"start":1, "end":84},
                 "test":{"start":1, "end":85}}
-}
+},
 
+"S16": {
+    "date": 20220816,
+    "name": "Taku",
+    "weight": 56.5,
+    "age":23,
+    "height":163,
+    "sides": ["L"],
+    "FP_sampling_rate":1000,
+    "delay": {"train_01":[0],
+              "train_02":[0],
+              "val":[0], 
+              "test":[0]},
+
+    "emg_sync": {"train_01":{"start":4.783765, "length":211.5},
+                "train_02":{"start":4.89006, "length":229},
+                "val":{"start":4.946034, "length":77},
+                "test":{"start":3.832707, "length":82}},
+
+    "motive_sync": {"train_01":{"start":2.5, "end":214},
+                    "train_02":{"start":2.5, "end":231.5},
+                    "val":{"start":2.5, "end":79.5},
+                    "test":{"start":2.5, "end":82}}
+}
 }
