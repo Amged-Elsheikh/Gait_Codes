@@ -83,8 +83,13 @@ def get_toe_off(start: int, data: pd.DataFrame, safety_factor=20):
 
 def get_heel_strike(end: int, data: pd.DataFrame, safety_factor=20):
     end += safety_factor
+    # loop from the end of FP contact (highest point) until reaching the lowest point on the curve
     while data.iloc[end+1] <= data.iloc[end]:
         end += 1
+    # Make sure the point is the lowest point by looking for the following 15 frames
+    heel_strike = end
+    following_points = [data.iloc[i] for i in range(end, end+15)]
+    end += following_points.index(min(following_points))
     return end
 
 
