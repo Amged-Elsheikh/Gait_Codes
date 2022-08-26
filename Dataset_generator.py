@@ -6,7 +6,7 @@ from scipy.signal import butter, filtfilt
 import json
 
 
-def get_directories(subject, trials):
+def get_directories(subject, trials, use_DEMG=True):
     # Load the subject details
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
@@ -27,7 +27,12 @@ def get_directories(subject, trials):
     Features_files = list(
         map(lambda x: f"{features_path}{x}_features.csv", trials))
 
-    output_folder = f"../Dataset/S{subject}/"
+    if use_DEMG:
+        emg_type = 'DEMG'
+    else:
+        emg_type = 'sEMG'
+
+    output_folder = f"../Dataset/{emg_type}/S{subject}/"
     output_files = list(
         map(lambda x: f"{output_folder}{x}_dataset.csv", trials))
 
@@ -99,7 +104,7 @@ def merge_IO(features: pd.DataFrame, joints_data: pd.DataFrame) -> pd.DataFrame:
     return Dataset
 
 
-def get_dataset(subject=None) -> None:
+def get_dataset(subject=None, use_DEMG=False) -> None:
     # If subject number wasn't provided ask the user to manually input it
     if subject == None:
         subject = input("Please write subject number in a format XX: ")
@@ -107,7 +112,7 @@ def get_dataset(subject=None) -> None:
     trials = ('train_01', 'train_02', 'val', 'test')
     ########################### Get I/O directories ###########################
     IK_files, ID_files, periods_files, Features_files, output_files = get_directories(
-        subject, trials)
+                                                                        subject, trials, use_DEMG)
     ########################### Loop in each trial ###########################
     for ik_file, id_file, periods_file, features_file, output_name\
             in zip(IK_files, ID_files, periods_files, Features_files, output_files):

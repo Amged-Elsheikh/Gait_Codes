@@ -9,8 +9,11 @@ class DataHandler:
         all_subjects = json.load(f)
 
     def __init__(self, subject, features, sensors, add_knee=False,
-                 out_labels=["knee moment", "ankle moment"]):
+                 out_labels=["knee moment", "ankle moment"], emg_type='sEMG'):
+        
         # Initiate the subject
+        if emg_type not in ['sEMG', 'DEMG']:
+            raise "emg_type must be either sEMG or DEMG"
         self.subject = subject
         self.features = features
         self.sensors = sensors
@@ -19,7 +22,7 @@ class DataHandler:
         # get datasets directories
         trials = ["train_01", "train_02", "val", "test"]
         trials_directory = list(
-            map(lambda x: f"../Dataset/S{subject}/{x}_dataset.csv", trials))
+            map(lambda x: f"../Dataset/{emg_type}/S{subject}/{x}_dataset.csv", trials))
         # #Load data and store it in a dictionary
         self.data = dict()
         for trial, trial_directory in zip(trials, trials_directory):

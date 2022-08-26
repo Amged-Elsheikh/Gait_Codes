@@ -27,14 +27,14 @@ def add_mean_std(df):
     df.loc['std', :] = std
 
 
-def get_files(features, sensors, joint, subject, model_name):
+def get_files(features, sensors, joint, subject, model_name, emg_type='DEMG'):
     used_features = '+'.join(features)
     used_muscles = []
     for sensor in sensors:
         used_muscles.append(MUSCLES[re.search('[0-9]+', sensor)[0]])
     used_muscles = '+'.join(used_muscles)
 
-    folder = f"../Results/indiviuals"
+    folder = f"../Results/indiviuals/{emg_type}"
     file_name = f'{joint}/S{subject} {joint} {model_name} {used_muscles} {used_features}'
     models_compare_file = f'{joint}/S{subject} {joint} {used_muscles} {used_features}'
 
@@ -56,14 +56,15 @@ def get_files(features, sensors, joint, subject, model_name):
 # # Window generator creation function
 def create_window_generator(subject=None, input_width=20, shift=3,
                             label_width=1, batch_size=64, features=["RMS"],
-                            sensors=['sensor 1'], add_knee=False, out_labels=["ankle moment"]
+                            sensors=['sensor 1'], add_knee=False,
+                            out_labels=["ankle moment"], emg_type='sEMG'
                             ):
     if subject == None:
         subject = input("Please input subject number in XX format: ")
     if len(subject) == 1:
         subject = "0" + subject
     # Get subject weight.
-    dataHandler = DataHandler(subject, features, sensors, add_knee, out_labels)
+    dataHandler = DataHandler(subject, features, sensors, add_knee, out_labels, emg_type)
     # #Create Window object
     window_object = WindowGenerator(dataHandler, input_width,
                                     label_width, shift, batch_size)
@@ -160,21 +161,21 @@ def train_fit(subject, tested_on, model_name, models_dic,
               load_best=False, joint='ankle', input_width=20,
               shift=1, label_width=1, batch_size=8,
               features=['RMS'], sensors=['sensor 1'], add_knee=False,
-              out_labels=[f"ankle moment"]):
+              out_labels=[f"ankle moment"], emg_type='DEMG'):
 
     ################################## Get Files ##################################
     model_file,\
         models_compare_pdf, models_compare_svg,\
         predictions_pdf, predictions_svg,\
         learning_curve_pdf, learning_curve_svg = get_files(features, sensors,
-                                                           joint, subject, model_name)
+                                                           joint, subject, model_name, emg_type)
 
     ######### Create Window Object and load trainining and Validation sets ########
     window_generator = partial(create_window_generator,
                                input_width=input_width, shift=shift,
                                label_width=label_width, batch_size=batch_size,
                                features=features, sensors=sensors,
-                               add_knee=add_knee, out_labels=out_labels)
+                               add_knee=add_knee, out_labels=out_labels, emg_type=emg_type)
 
     window_object = window_generator(subject)
     train_set, val_set, _ = window_object.make_dataset()

@@ -222,18 +222,18 @@ if __name__ == "__main__":
     ar_order = 4
     use_DEMG = True
 
-    for subject in [6, 8, 9, 10, 13, 14]:
-        # subject = input("Please input subject number: ")
-        subject = f"{int(subject):02d}"
-        print(subject)
-        emg_to_features(subject, trials, features_names, ar_order, use_DEMG)
+    # for subject in [6, 8, 9, 10, 13, 14]:
+    subject = input("Please input subject number: ")
+    subject = f"{int(subject):02d}"
+    print(subject)
+    emg_to_features(subject, trials, features_names, ar_order, use_DEMG)
 
-        try:
-            # If all subject data files exisit, the dataset will be automatically generated/updated
-            from Dataset_generator import *
-            get_dataset(subject)
-            print("Dataset file been updated successfully.")
-        except:
-            pass
+    try:
+        # If all subject data files exisit, the dataset will be automatically generated/updated
+        from Dataset_generator import *
+        get_dataset(subject, use_DEMG)
+        print("Dataset file been updated successfully.")
+    except:
+        pass
 
     # plt.show()
