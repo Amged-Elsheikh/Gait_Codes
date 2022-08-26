@@ -121,7 +121,7 @@ def system_match(data):
 
 
 # There is a delay in system (various delay may change )
-def shift_data(data, shift_key):
+def shift_data(data, subject,shift_key):
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
 
@@ -189,7 +189,7 @@ def GRF_to_OpenSim(subject, trials=["train_01", "train_02", "val", "test"], use_
         data = remove_system_gap(data)
 
         # Remove the delay
-        data = shift_data(data, shift_key=trials[i])
+        data = shift_data(data, subject, shift_key=trials[i])
 
         # Remove the offset from the data
         if offset_remove:
