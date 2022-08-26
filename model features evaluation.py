@@ -3,14 +3,18 @@ from intrasubject_training import *
 
 
 if __name__ == "__main__":
+    file_num = 0
+    GPU_num = 0
+    emg_type = 'sEMG'
+    file_subjects = [6, 8, 9, 10, 13, 14, 16]
+    model_name = 'LSTM'
+    joint = 'knee'
 
-    select_GPU(3)
+    select_GPU(GPU_num)
     # sensor_checker = '1+5+6+8'
     tf.random.set_seed(42)
     # True if you want to use knee angle as an extra input
     add_knee = False
-    # Labels to be predicted
-    joint = 'ankle'
     out_labels = [f"{joint} moment"]
     # Load data
     csv_file = f"{joint} features evaluation.csv"
@@ -21,11 +25,12 @@ if __name__ == "__main__":
         if col not in sensors_list:
             sensors_list.append(col)
     models_dic = {}
+    models_dic['MLP'] = create_ff_model
+    models_dic['LSTM'] = create_lstm_model
     models_dic['RCNN'] = create_conv_model
 
-    model_name = 'RCNN'
     for subject, features_string in eval_df.index:
-        if subject not in [14]:
+        if subject not in file_subjects:
             continue
         test_subject = f"{subject:02d}"
         predictions = {}
@@ -52,7 +57,8 @@ if __name__ == "__main__":
                           features=features,
                           sensors=sensors,
                           add_knee=add_knee,
-                          out_labels=out_labels)
+                          out_labels=out_labels,
+                          emg_type=emg_type)
 
             eval_df.loc[(int(test_subject), features_string),
                         (sensors_id, "R2")] = r2[0]
@@ -60,7 +66,7 @@ if __name__ == "__main__":
                         (sensors_id, "RMSE")] = rmse[0]
             eval_df.loc[(int(test_subject), features_string),
                         (sensors_id, "NRMSE")] = nrmse[0]
-            eval_df.to_csv(f"../Results/3{csv_file}")
+            eval_df.to_csv(f"../Results/{model_name} {file_num}{csv_file}")
 
             # print(model_name)
             plt.close()
