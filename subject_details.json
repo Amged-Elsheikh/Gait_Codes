@@ -344,10 +344,10 @@
               "val":[0], 
               "test":[0]},
 
-    "emg_sync": {"train_01":{"start":5.053765, "length":211.5},
-                "train_02":{"start":5.19006, "length":229},
-                "val":{"start":5.256034, "length":77},
-                "test":{"start":4.252707, "length":82}},
+    "emg_sync": {"train_01":{"start":5.09, "length":211.5},
+                "train_02":{"start":5.22, "length":229},
+                "val":{"start":5.29, "length":77},
+                "test":{"start":4.3, "length":82}},
 
     "motive_sync": {"train_01":{"start":2.5, "end":214},
                     "train_02":{"start":2.5, "end":231.5},
