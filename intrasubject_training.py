@@ -128,7 +128,13 @@ def compile_and_train(model_name, model_file, models_dic,
         print("\n\nTrains stopped manually")
     # If there is no trained model to be evaluated.
     except OSError:
-        print("\n\n No saved model existing. weights will be initialized")
+        print("\n\n No saved model existing. Model will be trained")
+        
+        model = compile_and_train(model_name, model_file, models_dic,
+                    train_set, val_set, loss_factor,
+                    learning_curve_pdf, learning_curve_svg,
+                    window_object, epochs, lr,
+                    eval_only=False, load_best=False)
     return model
 
 
