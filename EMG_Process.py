@@ -245,7 +245,7 @@ if __name__ == "__main__":
     emg_to_features(subject, trials, features_names, ar_order, use_DEMG)
 
     try:
-        # If all subject data files exisit, the dataset will be automatically generated/updated
+        # If all subject data files exisit, the dataset will be automatically generated
         from Dataset_generator import *
         get_dataset(subject, use_DEMG)
         print("Dataset file been updated successfully.")

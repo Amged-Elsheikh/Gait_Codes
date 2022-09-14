@@ -1,4 +1,5 @@
 import re
+from typing import *
 
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -27,14 +28,17 @@ def add_mean_std(df):
     df.loc['std', :] = std
 
 
-def get_files(features, sensors, joint, subject, model_name, emg_type='DEMG'):
+def get_files(features: List[str], sensors: List[str], joint: str, subject: str,
+ model_name: str, emg_type='DEMG', is_general_model=False):
     used_features = '+'.join(features)
     used_muscles = []
     for sensor in sensors:
         used_muscles.append(MUSCLES[re.search('[0-9]+', sensor)[0]])
     used_muscles = '+'.join(used_muscles)
-
-    folder = f"../Results/indiviuals/{emg_type}"
+    if is_general_model:
+        folder = f"../Results/GM/{emg_type}"
+    else:
+        folder = f"../Results/indiviuals/{emg_type}"
     file_name = f'{joint}/S{subject} {joint} {model_name} {used_muscles} {used_features}'
     models_compare_file = f'{joint}/S{subject} {joint} {used_muscles} {used_features}'
 
@@ -58,7 +62,7 @@ def create_window_generator(subject=None, input_width=20, shift=3,
                             label_width=1, batch_size=64, features=["RMS"],
                             sensors=['sensor 1'], add_knee=False,
                             out_labels=["ankle moment"], emg_type='sEMG'
-                            ):
+                            ) -> WindowGenerator:
     if subject == None:
         subject = input("Please input subject number in XX format: ")
     if len(subject) == 1:
@@ -124,7 +128,13 @@ def compile_and_train(model_name, model_file, models_dic,
         print("\n\nTrains stopped manually")
     # If there is no trained model to be evaluated.
     except OSError:
-        print("\n\n No saved model existing. weights will be initialized")
+        print("\n\n No saved model existing. Model will be trained")
+        
+        model = compile_and_train(model_name, model_file, models_dic,
+                    train_set, val_set, loss_factor,
+                    learning_curve_pdf, learning_curve_svg,
+                    window_object, epochs, lr,
+                    eval_only=False, load_best=False)
     return model
 
 

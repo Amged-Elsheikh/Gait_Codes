@@ -171,6 +171,14 @@ class WindowGenerator:
         
         
 class GM_WindowGenerator(WindowGenerator):
+    def __init__(
+            self, dataHandler,
+            input_width=10, label_width=None,
+            shift=1, batch_size=128,):
+
+        super().__init__(dataHandler, input_width, 
+                         label_width, shift, batch_size)
+                         
     @ property
     def train_dataset(self):
         """Make the training dataset for the indiviual models from train_01 and train_02.
