@@ -7,4 +7,5 @@ online_gait.py
 live_plot.py
 *.ipynb
 emg-vs-moments-plot.py
-*.ipynb
+all shank eval.py
+*.svg

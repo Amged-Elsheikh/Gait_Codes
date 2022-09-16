@@ -1,33 +1,77 @@
-# Import libraries
-import pandas as pd
+'''
+This script is used to convert Motive Motion Capture experement
+data (static pose & dynamic trials) to a trc format to be used by OpenSim.
+'''
 import json
 import re
+from typing import *
+
+import pandas as pd
 
 
-def get_IO_dir(subject=None, motion_type="dynamic"):
+def csv2trc(subject: Union[int, str], trials: List[str] = ['test',], motion_types: Union[str, None] = None):
+    '''
+    This function will handle finding the inputs and outputs directories, 
+    process the input data from csv format to trc format which will be used
+    by OpenSim software later to build the musculoskeletal model and find 
+    joints angles. 
+    '''
+    try:
+        subject = f"{int(subject):02d}"
+    except:
+        raise 'Subject variable should be a number'
+    # Make sure the subject is in the form XX
+    subject = f"{int(subject):02d}"
+    # If user did not specify the type of motion, then work with both types
+    if motion_types == None:
+        motion_types = ("static", "dynamic")
+    elif type(motion_types) == str:
+        motion_types = (motion_types, )
 
-    # If subject number not specified, user should write it manually
-    if subject == None:
-        subject = input("insert subject number: ")
-    # Create motion Setting File
+    markers_labeles_loaded = False
+    for motion_type in motion_types:
+        print(f"Processing {motion_type} data for subject {subject}")
+        # Get inputes and outputs directories
+        Inputs, Outputs = get_IO_dir(
+            subject, motion_type=motion_type, trials=trials)
+        # Loop in trials or process the static pose
+        for Input, Output in zip(Inputs, Outputs):
+            # Get experement labels once to save run time
+            if not markers_labeles_loaded:
+                Markers_Label = get_markers_labels(Input)
+                markers_labeles_loaded = True
+            # Load markers trajectories
+            markers_trajectories = load_trajectories(subject, Input, trials)
+            # Prpare the data for OpenSim
+            process_trc(markers_trajectories, Output, Markers_Label)
+
+
+def get_IO_dir(subject: str, motion_type: str = "dynamic",
+               trials: List[str] = ['test', ]) -> Tuple[List[str], List[str]]:
+    '''
+    This function will take the subject number, and the motion type 
+    (dynamic or static) to return the inputs and outputs directories.
+    '''
+    # load experement information
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
     date = subject_details[f"S{subject}"]["date"]
 
-    if motion_type == "static":
-        # Inputs file path
+    # Static pose directories
+    if motion_type.lower() == "static":
+        # Input file's path
         Inputs = [f"../Data/S{subject}/{date}/Statics/S{subject}_static.csv"]
-        # Outputs file path
+        # Output file's path
         Outputs = [
             f"../OpenSim/S{subject}/{date}/Statics/S{subject}_static.trc"]
 
-    elif motion_type == "dynamic":
-        # Inputs folder path
+    # experiment directories
+    elif motion_type.lower() == "dynamic":
+        # Inputs folder's path
         input_path = f"../Data/S{subject}/{date}/Dynamics/motion_data/"
-        # Outputs folder path
+        # Outputs folder's path
         output_path = f"../OpenSim/S{subject}/{date}/Dynamics/motion_data/"
         # Get files names (trials)
-        trials = ["train_01", "train_02", "val", "test"]
         Inputs = list(map(lambda x: f"S{subject}_{x}.csv", trials))
         Outputs = list(map(lambda x: f"{x}".replace('csv', 'trc'), Inputs))
 
@@ -35,12 +79,16 @@ def get_IO_dir(subject=None, motion_type="dynamic"):
         Inputs = list(map(lambda file: input_path+file, Inputs))
         Outputs = list(map(lambda file: output_path+file, Outputs))
 
-    return Inputs, Outputs
+    else:
+        raise f"motion_type should be either 'dynamic' or 'static'\
+            (not case sensative). The user input was '{motion_type}'"
+
+    return (Inputs, Outputs)
 
 
-def get_markers_labels(Input):
+def get_markers_labels(Input: str) -> List:
     """
-    Input: input data path. Type: string
+    Get the exact markers labels from th directory of any one of the trials
     """
     # Getting markers_trajectories labels
     Markers_Label = pd.read_csv(Input, header=2, nrows=0).columns.values[2:]
@@ -51,34 +99,41 @@ def get_markers_labels(Input):
     for label in Markers_Label:
         if label not in unique_labels:
             unique_labels.append(label)
+    # Optitrack prefix labels name with the assets name followed by ':'.\
+        # The next line will remove the prefix
     unique_labels = list(map(lambda x: re.sub('.+:', "", x), unique_labels))
     return unique_labels
 
 
-def load_trajectories(subject, Input):
+def load_trajectories(subject: str, Input: str, trials: List[str]) -> pd.DataFrame:
     """
-    Input & Output are pathes
+    This function will load the Mocap data and trim the trials
     """
+    with open("subject_details.json", "r") as f:
+        subject_details = json.load(f)
+    # Read the file
     markers_trajectories = pd.read_csv(Input, header=5)
-    markers_trajectories['Time (Seconds)'] = markers_trajectories["Frame"]/100
+    # Divide the frame number by the sampling rate to get the time in seconds
+    markers_trajectories['Time (Seconds)'] = markers_trajectories["Frame"] / \
+        subject_details['Mocap_fps']
     # Get trial name
     trial = re.sub(".*S[0-9]*_", "", Input)
     trial = re.sub("\.[a-zA-z]*", "", trial)
-    trials = ('train_01', 'train_02', 'val', 'test')
-
+    # Trim the data to get the real experement period, but do not do this for the static pose
     if trial in trials:
-        with open("subject_details.json", "r") as f:
-            subject_details = json.load(f)
-
         record_period = subject_details[f"S{subject}"]["motive_sync"][trial]
-        record_start = record_period['start'] * 100
-        record_end = record_period['end'] * 100
+        record_start = int(record_period['start'] * 100)
+        record_end = int(record_period['end'] * 100)
+        # Trim the record but do not change the frame/time values (Used for sync with EMG)
         markers_trajectories = markers_trajectories.iloc[record_start:record_end + 1, :]
-
     return markers_trajectories
 
 
-def process_trc(markers_trajectories, Output, Markers_Label):
+def process_trc(markers_trajectories: pd.DataFrame, Output: str, Markers_Label: List[str]) -> None:
+    '''
+    This function is used to convert markers data (Pandas/CSV) to OpenSim 
+    format
+    '''
     New_label_Coor = '\t'
     New_label_Mar = 'Frame#\tTime'
     Markers_number = len(Markers_Label)
@@ -101,31 +156,8 @@ def process_trc(markers_trajectories, Output, Markers_Label):
         f.write(Contents + New_label_Mar + New_label_Coor + '\n\n' + old)
 
 
-def csv2trc(subject=None, motion_types=None):
-    if subject == None:
-        subject = input("insert subject number in XX format: ")
-
-    if motion_types == None:
-        motion_types = ("static", "dynamic")
-    elif type(motion_types) == str:
-        motion_types = [motion_types, ]
-
-    flag = True
-    for motion_type in motion_types:
-        print(f"{motion_type} Data")
-        # Get inputes and outputs directories
-        Inputs, Outputs = get_IO_dir(subject, motion_type=motion_type)
-        # Loop in trials
-        for Input, Output in zip(Inputs, Outputs):
-            # Get experement labels once
-            if flag:
-                Markers_Label = get_markers_labels(Input)
-                flag = False
-
-            markers_trajectories = load_trajectories(subject, Input)
-            process_trc(markers_trajectories, Output, Markers_Label)
-
-
 if __name__ == '__main__':
-    # Load subject details
-    csv2trc(subject=None, motion_types=None)
+    subject = input('Please write the subject number: ')
+    # dynamic trials to be processed
+    trials = ["train_01", "train_02", "val", "test"]
+    csv2trc(subject=subject, trials=trials, motion_types=None)
