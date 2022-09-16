@@ -1,16 +1,16 @@
 import pandas as pd
 import json
 from sklearn.preprocessing import MinMaxScaler
-import re
+from typing import *
 
 
 class DataHandler:
-    with open("subject_details.json", "r") as f:
-        all_subjects = json.load(f)
+    '''
+    A custom class that will make working with data easier.
+    '''
+    def __init__(self, subject: str, features: List[str], sensors: List[str], add_knee=False,
+                 out_labels: List[str] = ["ankle moment"], emg_type='sEMG'):
 
-    def __init__(self, subject, features, sensors, add_knee=False,
-                 out_labels=["knee moment", "ankle moment"], emg_type='sEMG'):
-        
         # Initiate the subject
         if emg_type not in ['sEMG', 'DEMG']:
             raise "emg_type must be either sEMG or DEMG"
@@ -23,80 +23,79 @@ class DataHandler:
         trials = ["train_01", "train_02", "val", "test"]
         trials_directory = list(
             map(lambda x: f"../Dataset/{emg_type}/S{subject}/{x}_dataset.csv", trials))
-        # #Load data and store it in a dictionary
-        self.data = dict()
+        # #Load data and store it in a dictionary. The self method with the dictionary will allow accessing the dataset easily.
+        self.data: Dict[str, pd.DataFrame] = dict()
         for trial, trial_directory in zip(trials, trials_directory):
-            self.data[trial] = pd.read_csv(
-                trial_directory, index_col="time")
-        # Features number info
+            self.data[trial] = pd.read_csv(trial_directory, index_col="time")
 
-        # Select columns and normalize
-        self._get_datasets_columns()
-        self.model_columns = self.emg_features.copy()
+        # Create a list of features columns
+        emg_features = []
+        # All features in the dataset
+        features_columns = list(
+            filter(lambda x: "sensor" in x, self.data["val"]))
+        # Get the desired EMG features
+        for sensor in self.sensors:
+            for feature in self.features:
+                emg_features.append(f'{sensor} {feature}')
+        # Count the number of features
+        self.features_num = len(emg_features)
+        # initiate the columns for the models (I&O)
+        self.model_columns = emg_features.copy()
+        # Add the knee angle if required. Do n't increment the features number here
         if self.add_knee:
             self.model_columns.append("knee angle")
-
+        # Add the output columns for the model columns
         self.model_columns.extend(self.out_labels)
-
-        for trial in self.data.keys():
-            # Select columns
-            self.data[trial] = self.data[trial][self.dataset_columns]
+        # Scale the data
+        self._joints_columns = list(
+            filter(lambda x: "sensor" not in x, self.data["val"]))
+        # dataset_columns includes selected features and sensors combinations along with all joints data
+        dataset_columns = emg_features.copy()
+        dataset_columns.extend(self._joints_columns)
+        self._is_scaler_available = False
+        for trial in trials:
+            # Select columns. (all joints data are inncluded)
+            self.data[trial] = self.data[trial].loc[:, dataset_columns]
             # Scale
-            self.data[trial] = self.scale(self.data[trial])
+            self.data[trial] = self._scale(self.data[trial])
             # Take only selected columns for model
-            self.data[trial] = self.data[trial][self.model_columns]
-
+            self.data[trial] = self.data[trial].loc[:, self.model_columns]
+        # If the knee is added, then increment the number of features by 1
         if self.add_knee:
             self.features_num += 1
 
-    @property
-    def details(self):
-        return self.all_subjects[f"S{self.subject}"]
+    @ property
+    def _subject_weight(self) -> float:
+        with open("subject_details.json", "r") as f:
+            return json.load(f)[f"S{self.subject}"]["weight"]
 
-    @property
-    def weight(self):
-        return self.details["weight"]
-
-    def _get_datasets_columns(self):
-        self.joints_columns = list(
-            filter(lambda x: "sensor" not in x, self.data["val"]))
-        self.emg_features = []
-        # O(N*n) method
-        features_columns = list(
-            filter(lambda x: "sensor" in x, self.data["val"]))
-        for col in features_columns:
-            for feature in self.features:
-                if feature in col:
-                    self.emg_features.append(col)
-        self.dataset_columns = []
-
-        # Select desired muscles only
-        self.emg_features = [item for item in self.emg_features\
-            if re.match('[a-zA-Z]* [0-9]*', item)[0] in self.sensors]
-
-        self.features_num = len(self.emg_features)
-        self.dataset_columns = self.emg_features.copy()
-        self.dataset_columns.extend(self.joints_columns)
-
-    def scale(self, data):
+    def _scale(self, data):
+        '''
+        Scale the Dataset
+        '''
+        # Create slice objects to select different type of data
         features_slice = slice(0, self.features_num)
-        joints_data_num = len(self.joints_columns)
+        joints_data_num = len(self._joints_columns)
         angle_slice = slice(-joints_data_num, -joints_data_num//2)
         moment_slice = slice(-joints_data_num//2, None)
-        # Scale features
-        features_scaler = MinMaxScaler(feature_range=(0, 1))
-        features_scaler.fit(data.dropna().iloc[:300, features_slice])
-        data.iloc[:, features_slice] = features_scaler.transform(
+        
+        # Scale features between 0 and 1
+        if not self._is_scaler_available:
+            self._features_scaler = MinMaxScaler(feature_range=(0, 1))
+            # The scaler will fit only data from the recording periods.
+            self._features_scaler.fit(data.dropna().iloc[:300, features_slice])
+        data.iloc[:, features_slice] = self._features_scaler.transform(
             data.iloc[:, features_slice])
+
         # scale angles
-        angle_scaler = MinMaxScaler(feature_range=(0, 1))
-        angle_scaler.fit(data.dropna().iloc[:20, angle_slice])
-        data.iloc[:, angle_slice] = angle_scaler.transform(
+        if not self._is_scaler_available:
+            self._angle_scaler = MinMaxScaler(feature_range=(0, 1))
+            self._angle_scaler.fit(data.dropna().iloc[:300, angle_slice])
+        data.iloc[:, angle_slice] = self._angle_scaler.transform(
             data.iloc[:, angle_slice])
-        # Scale weight
-        data.iloc[:, moment_slice] = data.iloc[:, moment_slice] / self.weight
+        # Scale moments by subjext's weight
+        data.iloc[:, moment_slice] = data.iloc[:, moment_slice] / self._subject_weight
+        
+        # Set the scaler value to True to avoid creating new scalers
+        self._is_scaler_available = True
         return data
-
-
-if __name__ == "__main__":
-    DataHandler("06", ["RMS", "ZC", "AR"])

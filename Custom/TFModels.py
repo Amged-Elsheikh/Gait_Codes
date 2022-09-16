@@ -1,10 +1,28 @@
 from functools import partial
+from typing import List
 from tensorflow.keras import layers, models
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 import tensorflow as tf
 
 
-def create_lstm_model(window_object, stacked=3):
+def select_GPU(gpu_index=0):
+    '''
+    This function will  be used to select which GPU to be used.
+    '''
+    # Insure CUDA is available
+    if not tf.test.is_built_with_cuda():
+        raise print("No GPU found")
+    else:
+        gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+        # Select the GPU
+        tf.config.experimental.set_visible_devices(
+            devices=gpus[gpu_index], device_type='GPU')
+        # Prevent script from booking all available resources. If you removed the followng line, GPU will run on script at the time.
+        tf.config.experimental.set_memory_growth(gpus[gpu_index], True)
+
+
+
+def create_lstm_model(window_object):
     custom_LSTM = partial(layers.LSTM, units=8, dropout=0.1)
     lstm_model = models.Sequential(
         [
@@ -75,7 +93,10 @@ def knee_lstm_model(window_object):
     return lstm_model
 
 
-def model_callbacks(model_file):
+def model_callbacks(model_file: str) -> List:
+    '''
+    Three callback functions are used: Save best model, reducing learning rate and early stop
+    '''
     checkpoint_callback = ModelCheckpoint(filepath=model_file,
                                           save_weights_only=True,
                                           monitor="val_loss",
