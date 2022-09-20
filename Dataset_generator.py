@@ -140,9 +140,8 @@ def get_dataset(subject: Union[str, int], use_DEMG: bool = False):
         IK, ID, periods, features = load_data(IK_files[trial], ID_files[trial],
                                               periods_files[trial], Features_files[trial])
         # Merge IK, ID & record intervals together to create joint's dataset
-        joints_data = merge_joints(IK, ID)
+        joints_data = merge_joints(IK, ID, periods)
         # Merge EMG features with joints data and down sample joints data to match the EMG features
-        joints_data = select_walking_trials(joints_data, periods)
         Dataset = merge_IO(features, joints_data)
         # Rename column and save the dataset
         new_col = {'knee_angle_l': "knee angle",

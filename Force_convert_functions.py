@@ -72,8 +72,6 @@ def get_IO_dir(subject: str, trials: List[str]) -> Tuple[str, str, List[str]]:
     files = [f"S{subject}_{trial}_forceplate_1.csv" for trial in trials]
     return input_path, output_path, files
 
-        # Match devices coordinate system
-        data = system_match(data)
 
 def trial_period(data: pd.DataFrame, subject: str, trial: str) -> pd.DataFrame:
     '''
@@ -113,14 +111,6 @@ def remove_system_gap(data: pd.DataFrame) -> pd.DataFrame:
     data.iloc[:, :] = data.fillna(method="bfill")
     return data
 
-    shift_value = subject_details[f"S{subject}"]["delay"][shift_key][0]
-    if shift_value != 0:
-        shift_columns = [' Fx', ' Fz', ' Fy',
-                         ' Mx', ' Mz', ' My',
-                         ' Cx', ' Cz', ' Cy']
-        data.loc[:, shift_columns] = data[shift_columns].shift(
-            shift_value, fill_value=0)
-    return data
 
 def shift_data(data: pd.DataFrame, subject, shift_key) -> pd.DataFrame:
     """
