@@ -15,6 +15,8 @@ def csv2trc(subject: Union[int, str], trials: List[str] = ['test',], motion_type
     process the input data from csv format to trc format which will be used
     by OpenSim software later to build the musculoskeletal model and find 
     joints angles. 
+    
+    MAKE SURE THE CSV FILE HAVE LABELS MARKERS ONLY
     '''
     try:
         subject = f"{int(subject):02d}"

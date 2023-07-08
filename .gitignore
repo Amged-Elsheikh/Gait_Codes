@@ -8,4 +8,5 @@ live_plot.py
 *.ipynb
 emg-vs-moments-plot.py
 all shank eval.py
+folders_creator.py
 *.svg

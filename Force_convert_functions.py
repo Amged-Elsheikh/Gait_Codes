@@ -41,7 +41,8 @@ def GRF_to_OpenSim(subject: Union[str, int], trials: List[str] = ['test', ],
         data = shift_data(data, subject, shift_key=trials[i])
 
         # Remove the offset from the data
-        data = remove_offset(data, remove=offset_remove)
+        if remove_offset:
+            data = remove_offset(data, remove=offset_remove)
 
         # Apply low pass filter
         if use_filter:
@@ -72,8 +73,8 @@ def get_IO_dir(subject: str, trials: List[str]) -> Tuple[str, str, List[str]]:
     files = [f"S{subject}_{trial}_forceplate_1.csv" for trial in trials]
     return input_path, output_path, files
 
-        # Match devices coordinate system
-        data = system_match(data)
+        # # Match devices coordinate system
+        # data = system_match(data)
 
 def trial_period(data: pd.DataFrame, subject: str, trial: str) -> pd.DataFrame:
     '''
