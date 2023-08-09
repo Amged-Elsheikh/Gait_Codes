@@ -11,3 +11,4 @@ all shank eval.py
 folders_creator.py
 *.svg
 .vscode
+online_gait

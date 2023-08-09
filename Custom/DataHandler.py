@@ -43,7 +43,6 @@ class DataHandler:
             )
             for trial, trial_directory in zip(trials, trials_directory)
         }
-        self._is_scaler_available = False
         for trial in trials:
             self.data[trial] = self._scale(self.data[trial])
 
@@ -56,16 +55,16 @@ class DataHandler:
         # Scale moments by subject's weight
         data.loc[:, self.label] = data.loc[:, self.label] / self._weight
         # Scale features between 0 and 1
-        if not self._is_scaler_available:
+        if not hasattr(self, '_has_scaler'):
             self._features_scaler = MinMaxScaler(feature_range=(0, 1))
             self._features_scaler.fit(data.dropna().iloc[:300, : self.features_num])
-            self._is_scaler_available = True
-        data.iloc[:, self.features_num] = self._features_scaler.transform(
+            self._has_scaler = True
+        data.iloc[:, : self.features_num] = self._features_scaler.transform(
             data.iloc[:, : self.features_num]
         )
         return data
 
 
-if __name__ == '__main__':
-    a = DataHandler('08', ['WL'], ['sensor 6'])
+if __name__ == "__main__":
+    a = DataHandler("08", ["WL"], [f"sensor {i}" for i in [6, 7, 8, 9]])
     a
