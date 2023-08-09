@@ -289,7 +289,13 @@ def GRF_to_OpenSim(
     # Process each trial in different CPU
     Parallel(n_jobs=-1, verbose=10)(
         delayed(trial_process)(
-            subject, file, trial, input_dir, output_dir, use_filter, offset_remove
+            subject,
+            file,
+            trial,
+            input_dir,
+            output_dir,
+            use_filter,
+            offset_remove,
         )
         for file, trial in zip(files, trials)
     )

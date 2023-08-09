@@ -10,3 +10,4 @@ emg-vs-moments-plot.py
 all shank eval.py
 folders_creator.py
 *.svg
+.vscode
