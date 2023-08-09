@@ -16,6 +16,10 @@ def get_directories(subject: int, trials, use_DEMG=True) -> List[List[str]]:
     with open("subject_details.json", "r") as f:
         subject_details = json.load(f)
         date = subject_details[f"S{subject}"]["date"]
+    if use_DEMG:
+        emg_type = 'DEMG'
+    else:
+        emg_type = 'sEMG'
     # Get IK directories
     ik_path = f"../OpenSim/S{subject}/{date}/IK/"
     IK_files = list(map(lambda x: f"{ik_path}S{subject}_{x}_IK.mot", trials))
@@ -28,14 +32,10 @@ def get_directories(subject: int, trials, use_DEMG=True) -> List[List[str]]:
     periods_files = list(
         map(lambda x: f"{record_periods_path}S{subject}_{x}_record_periods.csv", trials))
     # Get the EMG features directories
-    features_path = f"../Outputs/S{subject}/{date}/EMG/"
+    features_path = f"../Outputs/S{subject}/{date}/{emg_type}/"
     Features_files = list(
         map(lambda x: f"{features_path}{x}_features.csv", trials))
     # Get Dataset directories
-    if use_DEMG:
-        emg_type = 'DEMG'
-    else:
-        emg_type = 'sEMG'
     output_folder = f"../Dataset/{emg_type}/S{subject}/"
     output_files = list(
         map(lambda x: f"{output_folder}{x}_dataset.csv", trials))
@@ -140,9 +140,8 @@ def get_dataset(subject: Union[str, int], use_DEMG: bool = False):
         IK, ID, periods, features = load_data(IK_files[trial], ID_files[trial],
                                               periods_files[trial], Features_files[trial])
         # Merge IK, ID & record intervals together to create joint's dataset
-        joints_data = merge_joints(IK, ID)
+        joints_data = merge_joints(IK, ID, periods)
         # Merge EMG features with joints data and down sample joints data to match the EMG features
-        joints_data = select_walking_trials(joints_data, periods)
         Dataset = merge_IO(features, joints_data)
         # Rename column and save the dataset
         new_col = {'knee_angle_l': "knee angle",

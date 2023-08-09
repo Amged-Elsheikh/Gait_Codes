@@ -16,7 +16,7 @@ WINDOW_LENGTH = 0.2  # The length of the sliding window in seconds
 SLIDING_WINDOW_STRIDE = 0.05  # Sliding window stride in seconds
 
 
-def get_emg_files(subject: str, trials: List[str]) -> List[List[str]]:
+def get_emg_files(subject: str, trials: List[str], use_DEMG: bool) -> List[List[str]]:
     """This function will return I/O directories stored in two lists.
     """
     # Load the experiment's setups
@@ -26,7 +26,10 @@ def get_emg_files(subject: str, trials: List[str]) -> List[List[str]]:
         date = subject_details["date"]
     # Get I/O data folders
     inputs_path = f"../Data/S{subject}/{date}/EMG"
-    outputs_path = f"../Outputs/S{subject}/{date}/EMG"
+    if use_DEMG:
+        outputs_path = f"../Outputs/S{subject}/{date}/DEMG"
+    else:
+        outputs_path = f"../Outputs/S{subject}/{date}/sEMG"
     # Get inputs directories
     inputs_names = list(
         map(lambda x: f"{inputs_path}/S{subject}_{x}_EMG.csv", trials))
@@ -215,7 +218,7 @@ def emg_to_features(subject: Union[str, int], trials: List[str],
         subject = f"{int(subject):02d}"
     except:
         raise 'Subject variable should be a number'
-    inputs_names, output_files = get_emg_files(subject, trials)
+    inputs_names, output_files = get_emg_files(subject, trials, use_DEMG)
     for emg_file, output_file, trial in zip(inputs_names, output_files, trials):
         # Load data
         emg = load_emg_data(subject, emg_file)
