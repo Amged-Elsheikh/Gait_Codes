@@ -2,8 +2,8 @@ import json
 
 import pandas as pd
 import tensorflow as tf
-from intrasubject_training import train_fit
-from Custom.TFModels import create_conv_model, select_GPU
+from modelTrainingFunc import train_fit
+from utilities.TFModels import create_conv_model, select_GPU
 
 
 tf.random.set_seed(42)

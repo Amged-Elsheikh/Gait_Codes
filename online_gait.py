@@ -1,7 +1,7 @@
 from Tringo.TrignoListenerSample import TrignoListener
 from Tringo import TrignoClient
-from Custom.PlottingFunctions import *
-from Custom.TFModels import *
+from utilities.PlottingFunctions import *
+from utilities.TFModels import *
 import EMG_Process
 from functools import partial
 from collections import deque

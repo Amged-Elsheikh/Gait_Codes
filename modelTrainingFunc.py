@@ -9,10 +9,10 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import losses
 
-from Custom.DataHandler import DataHandler
-from Custom.OneSideWindowGenerator import WindowGenerator
-from Custom.PlottingFunctions import plot_learning_curve
-from Custom.TFModels import evaluate, model_callbacks
+from utilities.DataHandler import DataHandler
+from utilities.OneSideWindowGenerator import WindowGenerator
+from utilities.PlottingFunctions import plot_learning_curve
+from utilities.TFModels import evaluate, model_callbacks
 
 plt.style.use("ggplot")
 

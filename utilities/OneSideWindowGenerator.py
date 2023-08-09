@@ -2,7 +2,7 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 
-from Custom.DataHandler import DataHandler
+from utilities.DataHandler import DataHandler
 
 tf.random.set_seed(42)
 

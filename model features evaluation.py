@@ -1,6 +1,6 @@
 from typing import *
 import pandas as pd
-from intrasubject_training import *
+from modelTrainingFunc import *
 
 
 if __name__ == "__main__":
